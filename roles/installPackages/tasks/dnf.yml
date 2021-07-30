@@ -1,0 +1,45 @@
+---
+# tasks file for roles/installPackages dnf
+- name: Upgrade all packages
+  become: true
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+    allowerasing: yes
+
+- name: Install the group packages
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: latest
+  loop: "{{ dnfTools }}"
+
+- name: Install dnf packages
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ dnfPackages }}"
+    state: latest
+    allowerasing: yes 
+
+- name: Install docker packages
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ dockerPackages }}"
+    state: present
+    allowerasing: yes
+    disable_gpg_check: yes
+
+- name: Autoremove unneeded packages installed as dependencies
+  become: true
+  dnf:
+    autoremove: yes
+
+- name: Enable systemctl for packages and ensure they are not masked
+  become: true
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: yes
+    masked: no
+    daemon_reload: yes
+    daemon_reexec: yes
+  loop: "{{ systemctlPackages }}"

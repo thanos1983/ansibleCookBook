@@ -1,0 +1,10 @@
+---
+# tasks file for roles/vault cleanUp
+- name: Remove sensitive data files for "{{ env_variable }}"
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ vault.sensitive_data.values() | flatten }}"
+  delegate_to: localhost
+  connection: local
+  run_once: true

@@ -1,0 +1,60 @@
+---
+# tasks file for roles/kubernetesUpgrade main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Remove node(s) from cluster in order to upgrade
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: drain
+  vars:
+    assignPrimeMaster: false
+
+- name: Destroy kube on node(s) in order to upgrade up to 2m
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: destroy
+
+- name: Upgrade kube packages for RH7
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: yum
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Upgrade kube packages for RH8
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: dnf
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: Pull / push images required by kube packages
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: pullKubeImages
+
+- name: Join Master node(s)
+  ansible.builtin.include_role:
+    name: kubernetesSecondaryMaster
+  vars:
+    ingressListReset: false
+  when: masterActiveNodes | select('search', ansible_hostname)
+
+- name: Join Worker nodes(s)
+  ansible.builtin.include_role:
+    name: kubernetesWorker
+  vars:
+    ingressListReset: false
+  when: workerActiveNodes | select('search', ansible_hostname)
+
+- name: Join worker(s) to be converted to Ingress nodes(s)
+  ansible.builtin.include_role:
+    name: kubernetesIngress
+  when: ingressActiveNodes | select('search', ansible_hostname)

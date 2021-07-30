@@ -1,0 +1,19 @@
+---
+# vars file for roles/sshping
+debPackages:
+  - perl 
+  - libssh-dev
+
+rpmPackages:
+  - perl-podlators
+  - libssh-devel
+
+sshPing:
+  tarFile:
+    src: 'https://my.private.docker.domain/zip/sshping-0.1.4.tar.gz'
+    dest: '/tmp'
+    version: 'sshping-0.1.4'
+
+filesToCopy:
+  - { src: '{{ sshPing.tarFile.dest }}/{{ sshPing.tarFile.version }}/bin/sshping', dest: '/usr/local/bin/sshping', mode: '0555' }
+  - { src: '{{ sshPing.tarFile.dest }}/{{ sshPing.tarFile.version }}/doc/sshping.8', dest: '/usr/share/man/man8/sshping.8', mode: '0644' }

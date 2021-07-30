@@ -1,0 +1,17 @@
+---
+# tasks file for roles/kubernetesMaster createToken
+- name: Generate Join command for node(s)
+  become: true
+  become_user: "{{ user }}"
+  register: generated_token
+  ansible.builtin.shell:
+    cmd: "kubeadm token create --print-join-command"
+  delegate_to: "{{ masterActiveNodes[-1] }}"
+
+- name: Copy join cluster command for node(s) to script
+  ansible.builtin.copy:
+    content: "{{ generated_token.stdout }}"
+    dest: "{{ role_path }}/files/{{ joinScript }}"
+    mode: "0644"
+  connection: local
+  delegate_to: localhost

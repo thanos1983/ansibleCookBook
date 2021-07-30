@@ -1,0 +1,18 @@
+---
+# vars file for installPipPackages
+pipPackages:
+  - wheel
+  - service
+  - python-systemd
+  - rpm
+  - urllib3
+  - idna
+  - docker
+  - selinux
+  - python-consul
+  - websocket-client
+  - psutil
+  - jmespath
+  - encoding-tools
+  - jsonquery
+  - virtualenv

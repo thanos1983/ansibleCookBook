@@ -1,0 +1,11 @@
+---
+# handlers file for roles/docker main
+- name: restart docker
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: docker
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes

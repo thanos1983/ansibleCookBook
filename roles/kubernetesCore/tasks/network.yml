@@ -1,0 +1,45 @@
+---
+# tasks file for roles/kubernetesCore network
+- name: Add the necessary modules
+  become: true
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ modprobeModules }}"
+
+- name: Enable iptables bridge and reload kernel
+  become: true
+  register: sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: "{{ item.file }}"
+    reload: yes
+  loop: "{{ sysctlK8s.values() | flatten }}"
+
+- name: Verify br_netfilter module is loaded
+  become: true
+  register: br_netfilter
+  ansible.builtin.shell:
+    cmd: "lsmod | grep br_netfilter"
+  when: sysctl.changed == true
+
+- name: Debug br_netfilter
+  ansible.builtin.debug:
+    var: br_netfilter
+  when: sysctl.changed == true
+
+- name: Create dir if not existing
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  loop: "{{ containerNetwork.dirs }}"
+
+- name: Extract and deploy cni binaries
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ containerNetwork.cni.src }}"
+    dest: "{{ containerNetwork.cni.dest }}"
+    remote_src: yes

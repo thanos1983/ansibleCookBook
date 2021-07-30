@@ -1,0 +1,83 @@
+---
+# tasks file for roles/minio minioDeploy
+- name: populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Debug Docker run
+  ansible.builtin.debug:
+    var: ansible_facts.services['docker.service'].state
+  when: ansible_facts.services['docker.service'].state is defined
+
+- name: Stop and remove minio Container
+  community.docker.docker_container:
+    name: "{{ minio.name }}"
+    state: absent
+    container_default_behavior: compatibility
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: Prune everything (including non-dangling images)
+  community.general.docker_prune:
+    timeout: 120
+    containers: yes
+    images: yes
+    images_filters:
+      dangling: false
+    networks: yes
+    volumes: yes
+    builder_cache: yes
+  ignore_errors: yes
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: Log into Artifactory with "{{ kubernetes.imagesRepo.username }}" user
+  community.docker.docker_login:
+    registry: "{{ minio.registry }}"
+    username: "{{ kubernetes.imagesRepo.username }}"
+    password: "{{ kubernetes.imagesRepo.password }}"
+  run_once: true
+
+- name: Debug Image to be deployed
+  ansible.builtin.debug:
+    msg: "{{ minio.repo }}:{{ minio.deploy_tag }}"
+  run_once: true
+
+- name: Run minio Container
+  register: docker
+  community.docker.docker_container:
+    pull: true
+    name: "{{ minio.name }}"
+    container_default_behavior: compatibility
+    image: "{{ minio.repo }}:{{ minio.deploy_tag }}"
+    volumes:
+      - "{{ volumes.data }}:/data"
+      - "{{ volumes.certificates }}:/root/.minio"
+    published_ports: "{{ portBinds }}"
+    restart_policy: unless-stopped
+    env:
+      MINIO_ROOT_USER: "{{ minio_env.MINIO_ROOT_USER }}"
+      MINIO_ROOT_PASSWORD: "{{ minio_env.MINIO_ROOT_PASSWORD }}"
+    command: server --address ":{{ minio.port }}" /data
+
+- name: Log out from Artifactory
+  community.docker.docker_login:
+    state: absent
+  run_once: true
+
+- name: Debug Data for minio container
+  ansible.builtin.debug:
+    var: docker.container.NetworkSettings
+  when: docker.container is defined
+
+- name: Check Ports are Accessible from "{{ inventory_hostname }}" to "{{ minio.name }}"
+  ansible.builtin.wait_for:
+    host: "{{ inventory_hostname }}"
+    port: "{{ item }}"
+    state: started
+    delay: 0
+    timeout: 3
+  loop: "{{ portsToCheck }}"
+  when: docker.container is defined

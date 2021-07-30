@@ -1,0 +1,13 @@
+---
+# tasks file for roles/unInstallPackages main
+- name: Centos or RH 7
+  ansible.builtin.include_tasks: yum.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Centos or RH 8
+  ansible.builtin.include_tasks: dnf.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'

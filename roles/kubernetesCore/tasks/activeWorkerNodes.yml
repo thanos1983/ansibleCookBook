@@ -1,0 +1,25 @@
+---
+# tasks file for roles/kubernetesCore activeWorkerNodes
+- name: workerActiveNodes (define an empty list)
+  ansible.builtin.set_fact:
+    workerActiveNodes: []
+
+- name: Register active worker node(s) on cluster
+  ansible.builtin.set_fact:
+    workerActiveNodes: "{{ workerActiveNodes + [ item.split()[0] ] }}"
+  when:
+    - nodes is defined
+    - nodes.changed == true
+    - nodes.stdout_lines != ''
+    - "'worker' in item or 'ingress' in item"
+    - ansible_hostname not in workerActiveNodes
+  loop: "{{ nodes.stdout_lines }}"
+
+- name: Active worker node(s)
+  ansible.builtin.debug:
+    var: workerActiveNodes
+  when:
+    - nodes is defined
+    - nodes.changed == true
+    - nodes.stdout_lines != ''
+    - workerActiveNodes | length > 0

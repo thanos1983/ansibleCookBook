@@ -1,0 +1,40 @@
+---
+# tasks file for roles/kubernetesMaster uiPod
+- name: Copy and deploy kubernetes UI pod elementes
+  community.kubernetes.k8s:
+    state: present
+    src: "{{ role_path }}/files/{{ kubeadm.podUiElements.userInterface }}"
+  connection: local
+  delegate_to: localhost
+  no_log: true
+
+- name: Launch kubectl proxy (detatched)
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.shell:
+    cmd: "nohup kubectl proxy --address {{ kubectl.proxy.ip }} --port {{ kubectl.proxy.port }} --accept-hosts '.*' &"
+  tags: [ never ]
+
+- name: Gather facts on listening ports
+  listen_ports_facts:
+  no_log: true
+  tags: [ never ]
+
+- name: Fail if dashboard port is not listening
+  ansible.builtin.fail:
+    msg: "Check that kubectl proxy is running on '{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}' and listens on port '{{ kubectl.proxy.port }}'"
+  when: "kubectl.proxy.port not in ansible_facts.tcp_listen | map(attribute='port') | sort | list"
+  tags: [ never ]
+
+- name: Fail if the dashboard url is not accessible
+  ansible.builtin.uri:
+    url: "http://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ kubectl.proxy.port }}/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/"
+    return_content: yes
+  register: dashboard
+  until: dashboard.status == 200
+  retries: 10
+  delay: 5
+  failed_when:
+    - dashboard.status != 200
+    - "'Kubernetes Dashboard' not in dashboard.content"
+  tags: [ never ]

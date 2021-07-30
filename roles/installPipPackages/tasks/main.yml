@@ -1,0 +1,109 @@
+---
+# tasks file for installPipPackages main
+- name: Install header files for pip2
+  become: true
+  ansible.builtin.yum:
+    name: python-devel
+    state: latest
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: List all pip2 installed packages
+  register: pip2Freeze
+  ansible.builtin.shell:
+    cmd: "pip freeze | sed 's/==/ /' | awk '{print $1}'"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+  no_log: true
+
+- name: Debug pip2 freeze
+  ansible.builtin.debug:
+    var: pip2Freeze.stdout_lines
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Upgrade pip2 before proceeding
+  become: true
+  ansible.builtin.pip:
+    name: pip==20.3.3
+    extra_args: -i "{{ pip_index_url }}"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: pip2 install latest setuptools version (known bug)
+  become: true
+  ansible.builtin.pip:
+    name: setuptools
+    state: latest
+    extra_args: -i "{{ pip_index_url }}"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Install all required pip2 packages
+  become: true
+  ansible.builtin.pip:
+    name: "{{ pipPackages }}"
+    state: latest
+    extra_args: -i "{{ pip_index_url }}" --ignore-installed requests
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Install header files for pip3
+  become: true
+  ansible.builtin.yum:
+    name: python3-devel
+    state: latest
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7' or ansible_distribution_major_version == '8'
+
+- name: List all pip3 installed packages
+  register: pip3Freeze
+  ansible.builtin.shell:
+    cmd: "pip3 freeze | sed 's/==/ /' | awk '{print $1}'"
+  no_log: true
+
+- name: Debug pip3 freeze
+  ansible.builtin.debug:
+    var: pip3Freeze.stdout_lines
+
+- name: Upgrade pip3 before proceeding
+  become: true
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+    executable: pip3.6
+    extra_args: -i "{{ pip_index_url }}"
+
+- name: pip3 install latest setuptools version (known bug)
+  become: true
+  ansible.builtin.pip:
+    name: setuptools
+    state: latest
+    executable: pip3.6
+    extra_args: -i "{{ pip_index_url }}"
+
+- name: Install all required pip3 packages
+  become: true
+  ansible.builtin.pip:
+    name: "{{ pipPackages }}"
+    state: latest
+    executable: pip3.6
+    extra_args: -i "{{ pip_index_url }}"
+
+- name: Install podman only for RH8
+  become: true
+  ansible.builtin.pip:
+    name: podman
+    state: latest
+    executable: pip3.6
+    extra_args: -i "{{ pip_index_url }}"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'

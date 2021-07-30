@@ -1,0 +1,30 @@
+---
+# vars file for roles/webSocket
+webSocket:
+  cockpitSocket: '4040'
+  certfiles:
+    ca: 'ca.cert'
+    key: 'my.key'
+    crt: 'my.crt'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/cockpit/ssl/my.pfx'
+    secret_properties: 'secrets/common/cockpit/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/my.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ webSocket.certfiles.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ webSocket.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ webSocket.certfiles.crt }}'
+
+systemdServices:
+  - NetworkManager
+  - cockpit.socket
+
+cockpit:
+  socket:
+    - { path: '/etc/systemd/system/cockpit.socket.d/', state: 'directory', mode: '0755', owner: 'root', group: 'root' }
+  conf:
+    - { src: 'listen.conf.j2', dest: '/etc/systemd/system/cockpit.socket.d/listen.conf', owner: 'root', group: 'root', mode: '0644' }
+    - { src: '50-from-certmonger.cert.j2', dest: '/etc/cockpit/ws-certs.d/50-from-certmonger.cert', owner: 'root', group: 'cockpit-ws', mode: '0644' }

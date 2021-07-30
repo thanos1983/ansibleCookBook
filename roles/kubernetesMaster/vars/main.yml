@@ -1,0 +1,98 @@
+---
+# vars file for roles/kubernetesMaster main
+networkingOption: 'calico'
+
+kubeadm:
+  dir: '/tmp'
+  cluster:
+    namespace: 'kubeless'
+  clusterRoleUser:
+    name: 'admin-user'
+    namespace: 'kubernetes-dashboard'
+  kubernetesCertDir: '/tmp/kubernetesCAs'
+  kubectlUiProxy:
+    address: '0.0.0.0'
+  crio:
+    metrics: 'cluster.yml'
+  weaveNet:
+    passwordFilePath: '/var/lib/weave/weave-passwd'
+  metallb:
+    file: 'metallb.yml'
+    # ipLayer2Range: '10.0.0.57/32'
+    ipLayer2Range: '10.0.0.57 - 10.0.0.60'
+  processesToKill:
+    kubectl: 'kubectl'
+    kubeProxy: 'kube-proxy'
+  podIngress:
+    certName: 'ingress-cert-test'
+    nginx: 'nginxIngress.yml.j2'
+    haProxy: 'haProxyIngress.yml.j2'
+    metalLB: 'metalLBIngressNginx.yml'
+  podNetworkCidr:
+    # calico: '192.168.0.0/16'
+    calico: '10.85.0.0/16'
+    flannel: '10.244.0.0/16'
+    weaveNet: '10.32.0.0/12'
+  podNetworkElement:
+    calico: 'calico.yml'
+    flannel: 'kube-flannel.yml'
+    weaveNet: 'weave-daemonset.yml'
+  podUiElements:
+    metrics: 'components.yml'
+    userInterface: 'recommended.yml'
+  certfiles:
+    ca: 'ca.cert'
+    key: 'ca.key'
+    crt: 'ca.crt'
+  certCustomKeyFile: 'certificate-custom-key.txt'
+  cni:
+    - 10-crio-bridge.conf
+    - 20-loopback.conf
+
+rbac:
+  serviceAccount:
+    metadata:
+      name: '{{ kubeadm.clusterRoleUser.name }}'
+      namespace: '{{ kubeadm.clusterRoleUser.namespace }}'
+  clusterRoleBinding:
+    metadata:
+      name: '{{ kubeadm.clusterRoleUser.name }}'
+    roleRef:
+      kind: 'ClusterRole' # Role or ClusterRole
+      name: 'cluster-admin' # Name of the Role or ClusterRole to bind to
+    subjects:
+      kind: 'ServiceAccount' # User or ServiceAccount
+      name: '{{ kubeadm.clusterRoleUser.name }}'
+      namespace: '{{ kubeadm.clusterRoleUser.namespace }}'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/ingress/ssl/my.pfx'
+    secret_properties: 'secrets/common/ingress/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubeadm.certfiles.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubeadm.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubeadm.certfiles.crt }}'
+
+kubeadmFiles:
+  kubeadmScript:
+    src: 'kubeadm.sh.j2'
+    dest: '{{ kubeadm.dir }}/kubeadm.sh'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+  kubeadmConfFile:
+    src: 'kubeadm-config.yml.j2'
+    dest: '{{ kubeadm.dir }}/kubeadm-config.yml'
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+kubectl:
+  proxy:
+    port: 8001
+    ip: '0.0.0.0'
+  scripts:
+    - { src: 'kubectlProxy.sh.j2', dest: '{{ kubeadm.dir }}/kubectlProxy.sh', owner: '{{ user }}', group: '{{ user }}', mode: '0755' }

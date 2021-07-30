@@ -1,0 +1,26 @@
+---
+# tasks file for roles/docker ssl
+- name: Create necessary dir(s)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  loop: "{{ docker.dir.values() | flatten }}"
+
+- name: Copy CA files for "{{ env_variable }}" to host
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ docker.dir.ssl }}/{{ item }}"
+    mode: "0600"
+  loop: "{{ docker.cert.files.values() | flatten }}"
+
+- name: Copy new daemon.json file with tls
+  become: true
+  ansible.builtin.template:
+    src: "{{ docker.daemon.file }}.j2"
+    dest: "{{ docker.daemon.dir }}/{{ docker.daemon.file }}"
+    backup: true
+    mode: "0644"
+  notify: restart docker

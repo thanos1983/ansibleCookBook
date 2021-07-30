@@ -1,0 +1,25 @@
+---
+# tasks file for roles/webSocket
+- name: Enable cockpit.socket service
+  become: true
+  ansible.builtin.shell:
+    cmd: "systemctl enable --now cockpit.socket"
+
+- name: Add certificate for cockpit
+  become: true
+  ansible.builtin.copy:
+    src: "my.ca"
+    dest: "/etc/cockpit/ws-certs.d/"
+    owner: "root"
+    group: "cockpit-ws"
+    mode: "0644"
+
+- name: Validate certificate
+  register: ca_validation
+  become: true
+  ansible.builtin.shell:
+    cmd: "remotectl certificate"
+
+- name: Debug CA
+  ansible.builtin.debug:
+    var: ca_validation

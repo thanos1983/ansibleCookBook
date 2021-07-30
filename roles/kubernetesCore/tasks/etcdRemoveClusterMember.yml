@@ -1,0 +1,35 @@
+---
+# tasks file for roles/kubernetesCore etcdRemoveClusterMember
+- name: Remove etcd cluster member(s)
+  become: true
+  become_user: "{{ user }}"
+  register: etcdNodeHash
+  delegate_to: "{{ masterActiveNodes[0] }}"
+  ansible.builtin.shell:
+    cmd: >
+          kubectl exec etcd-{{ masterActiveNodes[0] }}.{{ ansible_facts.dns.domain }}
+          -n kube-system
+          --
+          etcdctl
+          --cacert /etc/kubernetes/pki/etcd/ca.crt
+          --cert /etc/kubernetes/pki/etcd/peer.crt
+          --key /etc/kubernetes/pki/etcd/peer.key
+          member remove "{{ item.split(',')[0] }}"
+  loop: "{{ etcdMembers.stdout_lines | default([]) }}"
+  when:
+    - masterActiveNodes is defined
+    - masterActiveNodes | length > 1
+    - assignPrimeMaster == false
+    - "ansible_hostname in item"
+    - "ansible_hostname != masterActiveNodes[0]"
+
+- name: Dump stdout of removing member(s) from etcd if existed
+  ansible.builtin.debug:
+    var: etcdNodeHash.results
+  when:
+    - masterActiveNodes is defined
+    - masterActiveNodes | length > 1
+    - assignPrimeMaster == false
+    - etcdNodeHash is defined
+    - etcdNodeHash.results is defined
+  run_once: true

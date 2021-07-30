@@ -1,0 +1,18 @@
+---
+# tasks file for roles/changeGroupID
+- name: Change group ID for "{{ user }}"
+  become: true
+  ansible.builtin.shell:
+    cmd: "groupmod -g {{ uid }} {{ user }}"
+
+- name: Change group ID for "{{ user }}" on all files in directory
+  become: true
+  ansible.builtin.shell:
+    cmd: "find {{ item }} -group {{ old_uid }} -exec chgrp -h {{ user }} {} \\;"
+  loop: "{{ directoriesOwnedByOldUid }}"
+
+- name: Change ownership of dir
+  become: true
+  ansible.builtin.shell:
+    cmd: "chown -R {{ user }}:{{ user }} {{ item }}"
+  loop: "{{ directoriesOwnedByOldUid }}"

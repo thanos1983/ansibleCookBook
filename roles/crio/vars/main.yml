@@ -1,0 +1,72 @@
+---
+# vars file for roles/crio main
+kubernetes_repo: 'kubernetes'
+
+crio:
+  logLevel: 'info'
+  confFiles:
+    - { src: 'registries.conf.j2', dest: '/etc/containers/registries.conf', owner: 'root', group: 'root', mode: '0644' }
+    - { src: '01-metrics.conf.j2', dest: '/etc/crio/crio.conf.d/01-metrics.conf', owner: 'root', group: 'root', mode: '0644' }
+    - { src: '01-log-level.conf.j2', dest: '/etc/crio/crio.conf.d/01-log-level.conf', owner: 'root', group: 'root', mode: '0644' }
+    - { src: '01-storage-driver.conf.j2', dest: '/etc/crio/crio.conf.d/01-storage-driver.conf', owner: 'root', group: 'root', mode: '0644' }
+    - { src: '01-cgroup-manager.conf.j2', dest: '/etc/crio/crio.conf.d/01-cgroup-manager.conf', owner: 'root', group: 'root', mode: '0644' }
+  dirs:
+    - { path: '/etc/crio', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+    - { path: '/etc/crio/crio.conf.d', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+    - { path: '/usr/local/lib/systemd/system', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+    - { path: '{{ kubernetes.crio.cert.dir }}', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+    - { path: '/usr/share/oci-umount/oci-umount.d', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+    - { path: '/usr/local/share/oci-umount/oci-umount.d', state: 'directory', owner: 'root', group: 'root', mode: '0755'  }
+  uri:
+    - { url: 'http://localhost/info', unix_socket: '/var/run/crio/crio.sock', return_content: 'true' }
+    - { url: 'http://localhost:{{ kubernetes.crio.metricsPort }}/metrics', unix_socket: '', return_content: 'true' }
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/cri-o/ssl/my.pfx'
+    secret_properties: 'secrets/common/cri-o/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubernetes.crio.cert.files.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubernetes.crio.cert.files.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ kubernetes.crio.cert.files.crt }}'
+
+containerRunTimeInterface:
+  crio:
+    src: 'https://my.private.repo/zip/cri-o.amd64.v1.20.3.tar.gz'
+    dest: '/tmp'
+    version: 'cri-o'
+  conmon:
+    src: 'https://my.private.repo/zip/conmon-2.0.29.tar.gz'
+    dest: '/tmp'
+    version: 'conmon-2.0.29'
+
+crioPackages:
+  rh7:
+    - containers-common
+    - device-mapper-devel
+    - git
+    - glib2-devel
+    - glibc-devel
+    - glibc-static
+    - go
+    - gpgme-devel
+    - libassuan-devel
+    - libgpg-error-devel
+    - libseccomp-devel
+    - libselinux-devel
+    - pkgconfig
+    - make
+    - runc
+    - containerd.io
+  rh8:
+    - containers-common
+    - device-mapper-devel
+    - git
+    - make
+    - glib2-devel
+    - glibc-devel
+    - glibc-static
+    - runc
+    # https://github.com/cri-o/cri-o/blob/master/tutorials/setup.md (check for RH8 something extra TODO) 

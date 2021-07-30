@@ -1,0 +1,22 @@
+---
+# tasks file for roles/containersCore hangedPids
+- name: List / debug and kill hanged pid(s)
+  become: true
+  block:
+    - name: List hanged pid(s) if any for socket '{{ socket }}'
+      register: hanged_processes
+      ansible.builtin.shell:
+        cmd: "ps -e -o pid,comm,cgroup | grep -i {{ socket }} | awk '{print $1}'"
+
+    - name: Debug hanged pid(s) if any for socket '{{ socket }}'
+      ansible.builtin.debug:
+        var: hanged_processes.stdout_lines
+      when: hanged_processes.stdout != ""
+
+    - name: Kill hanged pid(s) if any for socket '{{ socket }}'
+      ansible.builtin.shell:
+        cmd: "ps -e -o pid,comm,cgroup | grep -i {{ socket }} | awk '{print $1}' | xargs -t kill -9"
+      when: hanged_processes.stdout != ""
+      # by killing parent pids childs are automatically terminated.
+      # Yet the list included the childs and can result to error
+      ignore_errors: true

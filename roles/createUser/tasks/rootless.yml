@@ -1,0 +1,60 @@
+---
+# tasks file for createUser rootless 
+- name: Recursively remove content under /var/lib/podman dir
+  become: true
+  ansible.builtin.file:
+    path: "/var/lib/podman/libpod"
+    state: absent
+  become_user: "{{ item }}"
+  loop: "{{ podmanUsers }}"
+
+- name: Add admin gid to the end of file subuid / subgid for rootless containers
+  become: true
+  ansible.builtin.lineinfile:
+    path: "{{ item.path }}"
+    line: "{{ item.line }}"
+    insertbefore: "{{ item.insertbefore }}"
+  loop: "{{ rootlessContainers }}"
+
+- name: Recursively create rootless config dir and ownership if not exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+    recurse: "{{ item.recurse }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ rootlessConf.dir }}"
+
+- name: Add podman storage configurations
+  become: true
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ rootlessConf.conf }}"
+
+- name: Reload rootless containers configuration files (subuid / subgid)
+  become: true
+  ansible.builtin.shell:
+    cmd: "podman system migrate"
+  become_user: "{{ item }}"
+  loop: "{{ podmanUsers }}"
+
+- name: Check rootless configuration
+  register: rootless
+  ansible.builtin.shell:
+    cmd: "podman unshare cat /proc/self/uid_map"
+
+- name: Raise error in case that rootless is returning error
+  ansible.builtin.fail:
+    msg: Check both (/etc/subuid and /etc/subgid) for user range min - max (165537-231072)
+  when: rootless.rc != 0 and rootless.stderr != ""
+
+- name: Debug rootless configurations when error
+  ansible.builtin.debug:
+    var: rootless
+  when: rootless.rc != 0 and rootless.stderr != ""

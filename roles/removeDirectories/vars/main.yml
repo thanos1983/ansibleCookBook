@@ -1,0 +1,7 @@
+---
+# vars file for removeDirectories
+userDirectories:
+  - '/logs'           
+  - '/data01'             
+  - '/data02'             
+  - '/secure'             

@@ -1,0 +1,13 @@
+---
+# tasks file for roles/dockerPruneCron main
+- name: Docker Prune every day at midnight
+  become: true
+  cron:
+    name: "Docker system prune -a -f --volumes"
+    user: "root"
+    minute: "0"
+    hour: "0"
+    day: "*"
+    cron_file: "/etc/crontab"
+    job: "docker system prune -a -f --volumes"
+  notify: restart crond

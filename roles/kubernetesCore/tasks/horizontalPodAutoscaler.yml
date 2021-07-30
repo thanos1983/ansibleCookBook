@@ -1,0 +1,33 @@
+---
+# tasks file for roles/kubernetesCore horizontalPodAutoscaler
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: "{{ horizontalPodAutoscaler.metadata.name }}"
+  namespace: "{{ horizontalPodAutoscaler.metadata.namespace }}"
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: "{{ horizontalPodAutoscaler.spec.scaleTargetRef.name }}"
+  minReplicas: "{{ horizontalPodAutoscaler.spec.minReplicas }}"
+  maxReplicas: "{{ horizontalPodAutoscaler.spec.minReplicas }}"
+  metrics:
+  - type: Resource
+    resource:
+      name: "{{ horizontalPodAutoscaler.spec.metrics.type.resource.name }}"
+      target:
+        type: "{{ horizontalPodAutoscaler.spec.metrics.type.resource.target.type }}"
+        averageUtilization: "{{ horizontalPodAutoscaler.spec.metrics.type.resource.target.averageUtilization }}"
+status:
+  observedGeneration: 1
+  lastScaleTime: <some-time>
+  currentReplicas: 1
+  desiredReplicas: 1
+  currentMetrics:
+  - type: Resource
+    resource:
+      name: cpu
+      current:
+        averageUtilization: 0
+        averageValue: 0

@@ -1,0 +1,29 @@
+---
+# tasks file for roles/kubernetesCore service
+- name: Service deployment in Namespace '{{ service.metadata.namespace }}'
+  community.kubernetes.k8s:
+    state: "{{ serviceState | default('present') }}"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ service.metadata.name }}"
+        namespace: "{{ service.metadata.namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ service.metadata.labels.name }}"
+          app.kubernetes.io/instance: "{{ service.metadata.labels.instance }}"
+          app.kubernetes.io/version: "{{ service.metadata.labels.version }}"
+          app.kubernetes.io/component: "{{ service.metadata.labels.component }}"
+          app.kubernetes.io/managed-by: "{{ service.metadata.labels.managed_by }}"
+      spec: "{{ spec | from_yaml }}"
+  vars:
+    spec: |
+      selector:
+        app: "{{ service.spec.selector.app }}"
+      ports:
+      - name: "{{ service.spec.ports.name }}"
+        port: {{ service.spec.ports.port }}
+        targetPort: {{ service.spec.ports.targetPort }}
+      type: "{{ service.spec.type }}"
+  connection: local
+  delegate_to: localhost

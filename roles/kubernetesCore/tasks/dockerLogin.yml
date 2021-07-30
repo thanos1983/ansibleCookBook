@@ -1,0 +1,8 @@
+---
+# tasks file for roles/kubernetesCore dockerLogin
+- name: Log into Artifactory with "{{ kubernetes.imagesRepo.username }}" user
+  become: true
+  community.docker.docker_login:
+    registry: "{{ kubernetes.imagesRepo.registry }}"
+    username: "{{ kubernetes.imagesRepo.username }}"
+    password: "{{ kubernetes.imagesRepo.password }}"

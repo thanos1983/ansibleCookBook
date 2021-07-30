@@ -1,0 +1,10 @@
+---
+# tasks file for kubernetesCore certPermissions 
+- name: Recursively change ownership of directory '/var/lib/kubelet'
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kubelet
+    state: directory
+    recurse: yes
+    owner: "{{ user }}"
+    group: "{{ user }}"

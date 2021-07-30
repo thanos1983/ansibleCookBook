@@ -1,0 +1,41 @@
+---
+# tasks file for roles/kubernetesCore activeMasterNodes
+- name: masterActiveNodes (define an empty list)
+  ansible.builtin.set_fact:
+    masterActiveNodes: []
+
+- name: Check which of the master node(s) is active
+  ignore_errors: true
+  register: master_nodes
+  ansible.builtin.wait_for:
+    port: "{{ kubernetes.controlPlanePort }}"
+    timeout: 1
+    host: "{{ item }}"
+  loop: "{{ groups['kubernetesMasterNodes'] }}"
+
+- name: Debug master node(s) if any active
+  ansible.builtin.debug:
+    msg: "Status: {{ item.failed }} node: {{ item.item }} is active"
+  loop: "{{ master_nodes.results }}"
+  when: item.failed == False
+
+- name: Register active master node(s) on cluster
+  ansible.builtin.set_fact:
+    masterActiveNodes: "{{ masterActiveNodes + [ item.item ] }}"
+  loop: "{{ master_nodes.results }}"
+  when:
+    - item.failed == False
+    - item.item not in masterActiveNodes
+
+- name: Assign Prime Master Node if non active
+  ansible.builtin.set_fact:
+    masterActiveNodes: "{{ masterActiveNodes + [ groups['kubernetesMasterNodes'][0] ] }}"
+  when:
+    - assignPrimeMaster is defined
+    - assignPrimeMaster == true
+    - masterActiveNodes | length == 0
+
+- name: Debug active master node(s) to be used
+  ansible.builtin.debug:
+    var: masterActiveNodes
+  when: masterActiveNodes | length > 0

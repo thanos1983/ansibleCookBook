@@ -1,0 +1,72 @@
+---
+# tasks file for roles/prometheusServer conf
+- name: Prometheus push conf / cert files to remote host(s)
+  block:
+    - name: Create necessary directorie(s) and permissions on node(s)
+      become: true
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        recurse: true
+        owner: "{{ prometheus.systemAccount.name }}"
+        group: "{{ prometheus.systemAccount.name }}"
+      loop: "{{ prometheus.conf.dirs.values() | flatten }}"
+
+    - name: Gather facts for Prometheus extracting points / node(s)
+      register: prometheusNodeExporter
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "!any"
+          - "network"
+          - "virtual"
+          - "facter"
+      delegate_facts: true
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['prometheusClients'] }}"
+      run_once: true
+
+    - name: Template the conf files to "{{ prometheus.conf.dirs.conf }}" dir
+      become: true
+      ansible.builtin.template:
+        src: "{{ item }}.j2"
+        dest: "{{ prometheus.conf.dirs.conf }}/{{ item }}"
+        owner: "{{ prometheus.systemAccount.name }}"
+        group: "{{ prometheus.systemAccount.name }}"
+        mode: "0644"
+      loop: "{{ prometheus.conf.files.values() | flatten }}"
+
+    - name: Load files in vars
+      ansible.builtin.set_fact:
+        crt: "{{ lookup('file', '{{ prometheus.cert.files.crt }}') }}"
+        key: "{{ lookup('file', '{{ prometheus.cert.files.key }}') }}"
+      delegate_to: localhost
+      connection: local
+      run_once: true
+
+    - name: Create ca.cert file for CA client
+      ansible.builtin.template:
+        src: "{{ prometheus.cert.files.ca }}.j2"
+        dest: "{{ role_path }}/files/{{ prometheus.cert.files.ca }}"
+        mode: "644"
+      delegate_to: localhost
+      connection: local
+      run_once: true
+
+    - name: Copy CAs file to "{{ prometheus.conf.dirs.cert }}" dir
+      become: true
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ prometheus.conf.dirs.cert }}"
+        owner: "{{ prometheus.systemAccount.name }}"
+        group: "{{ prometheus.systemAccount.name }}"
+        mode: "0644"
+      loop:
+        - "{{ prometheus.cert.files.key }}"
+        - "{{ prometheus.cert.files.crt }}"
+        - "{{ prometheus.cert.files.ca }}"
+  always:
+    - name: Cleanup
+      ansible.builtin.include_role:
+        name: vault
+        tasks_from: cleanUp

@@ -1,0 +1,10 @@
+---
+# tasks file for roles/kubernetesMaster kubectlWhoami
+- name: Copy kubectl-whoami script to master node
+  become: true
+  ansible.builtin.copy:
+    src: kubectl-whoami
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: +x

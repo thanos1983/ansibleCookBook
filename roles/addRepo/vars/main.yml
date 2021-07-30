@@ -1,0 +1,17 @@
+---
+# vars file for addRepo
+repos:
+  yum:
+    file: 'yum-3-party'
+    name: '3rd-party'
+    description: 'yum-3-party'
+    enabled: 'yes'
+    gpgcheck: 'no'
+    baseurl: 'https://my.private.docker.domain/docker-cache/centos/7/x86_64/stable/'
+  frt:
+    file: 'yum-frt-devops'
+    name: 'yum-frt-devops'
+    description: 'yum-frt-devops'
+    enabled: 'yes'
+    gpgcheck: 'no'
+    baseurl: 'https://my.private.docker.domain/rpm-frt-devops/'

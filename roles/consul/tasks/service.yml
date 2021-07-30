@@ -1,0 +1,9 @@
+---
+# tasks file for roles/consul service
+- name: Create systemd service for consul
+  become: true
+  ansible.builtin.template:
+    src: "consul.service.j2"
+    dest: "/usr/lib/systemd/system/consul.service"
+    mode: "0644"
+  notify: restart consul

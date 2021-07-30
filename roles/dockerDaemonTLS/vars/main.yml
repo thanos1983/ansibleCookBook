@@ -1,0 +1,25 @@
+---
+# vars file for roles/dockerDaemonTLS
+docker:
+  port:
+    metrics: '9323'
+  dir:
+    ssl: '/etc/docker/ssl'
+  daemon:
+    dir: '/etc/docker'
+    file: 'daemon.json'
+  cert:
+    files:
+      key: 'daemon-key.pem'
+      crt: 'daemon-cert.pem'
+      ca: 'ca.pem'
+
+vault:
+  vault_paths:
+    cert_path: 'files/{{ docker.cert.files.ca }}'
+    secret_pfx: 'secrets/common/node-exporter/ssl/my.pfx'
+    secret_properties: 'secrets/common/node-exporter/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ docker.cert.files.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ docker.cert.files.crt }}'

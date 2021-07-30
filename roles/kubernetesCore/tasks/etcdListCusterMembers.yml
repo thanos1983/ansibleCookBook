@@ -1,0 +1,33 @@
+---
+# tasks file for roles/kubernetesCore etcdListCusterMembers
+- name: List etcd cluster member(s)
+  become: true
+  become_user: "{{ user }}"
+  delegate_to: "{{ masterActiveNodes[0] }}"
+  register: etcdMembers
+  ansible.builtin.shell:
+    cmd: >
+          kubectl exec etcd-{{ masterActiveNodes[0] }}.{{ ansible_facts.dns.domain }}
+          -n kube-system
+          --
+          etcdctl
+          --cacert /etc/kubernetes/pki/etcd/ca.crt
+          --cert /etc/kubernetes/pki/etcd/peer.crt
+          --key /etc/kubernetes/pki/etcd/peer.key
+          member list
+  when:
+    - masterActiveNodes is defined
+    - masterActiveNodes | length > 0
+    - assignPrimeMaster == false
+  run_once: true
+
+- name: Debug etcd members
+  ansible.builtin.debug:
+    var: etcdMembers.stdout_lines
+  when:
+    - masterActiveNodes is defined
+    - masterActiveNodes | length > 0
+    - assignPrimeMaster == false
+    - etcdMembers.stdout_lines is defined
+    - etcdMembers.stdout_lines != ""
+  run_once: true

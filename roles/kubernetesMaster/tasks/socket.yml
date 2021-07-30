@@ -1,0 +1,19 @@
+---
+# tasks file for roles/kubernetesMaster socket
+- name: Inserting the socket after the join command for worker
+  ansible.builtin.lineinfile:
+    path: "{{ role_path }}/files/{{ joinScript }}"
+    line: "--cri-socket={{ kubernetes.socket.crio }}"
+    insertafter: "sha256:*"
+  when: joinScript == "join-command.sh"
+  connection: local
+  delegate_to: localhost
+
+- name: Inserting the socket after the join command for secondary Master node(s)
+  ansible.builtin.lineinfile:
+    path: "{{ role_path }}/files/{{ joinScript }}"
+    line: "--control-plane --certificate-key {{ masterPrimeCertKey }} --cri-socket {{ kubernetes.socket.crio }}"
+    insertafter: "sha256:*"
+  when: joinScript == "join-command-plane.sh"
+  connection: local
+  delegate_to: localhost

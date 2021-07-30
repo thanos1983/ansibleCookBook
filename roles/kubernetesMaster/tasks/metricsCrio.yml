@@ -1,0 +1,15 @@
+---
+# tasks file for roles/kubernetesMaster metricsCrio
+- name: Copy and deploy metrics CRI-O
+  community.kubernetes.k8s:
+    state: present
+    src: "{{ role_path }}/files/{{ kubeadm.crio.metrics }}"
+  connection: local
+  delegate_to: localhost
+  register: metrics_crio
+  no_log: true
+
+- name: Debug Error if occured
+  ansible.builtin.debug:
+    var: metrics_crio
+  when: metrics_crio.failed == "true"

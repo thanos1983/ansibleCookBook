@@ -1,0 +1,11 @@
+---
+# tasks file for addPipConf
+- name: Copy pip global conf file to /etc
+  become: true
+  ansible.builtin.copy:
+    src: "pip.conf"
+    dest: "/etc/pip.conf"
+    owner: "root"
+    group: "root"
+    mode: "0655"
+    backup: yes

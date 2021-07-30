@@ -1,0 +1,15 @@
+---
+# tasks file for roles/kubernetesMaster metrics
+- name: Launch metrics pod
+  community.kubernetes.k8s:
+    state: present
+    src: "{{ role_path }}/files/{{ kubeadm.podUiElements.metrics }}"
+  delegate_to: localhost
+  connection: local
+  register: metrics
+  no_log: true
+
+- name: Debug Metrics Error if occured
+  ansible.builtin.debug:
+    var: metrics
+  when: metrics.failed == "true"

@@ -1,0 +1,31 @@
+---
+# tasks file for roles/activeUiFrontEnd
+- name: Complete ActiveUI Frond End Deployment
+  block:
+    - name: Create Secret(s)
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: secrets
+
+    - name: Deployment ActiveUI FrondEnd
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: deployResourcesEnvs
+
+    - name: Create Service
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: service
+
+    - name: Create Ingress HaProxy
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressHaProxyFlat
+
+    - name: Validate Uri
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: uriValidation
+      vars:
+        url: "{{ domain.url }}"
+  run_once: true

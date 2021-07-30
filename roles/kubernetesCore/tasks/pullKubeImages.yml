@@ -1,0 +1,75 @@
+---
+# tasks file for roles/kubernetesCore pullKubeImages
+- name: List images of kube packages
+  ansible.builtin.shell:
+    cmd: "kubeadm config images list --kubernetes-version=v{{ kubernetes.kubeVersion }}"
+  register: kubeImageList
+  delegate_to: "{{ masterActiveNodes[0] }}"
+  run_once: true
+  no_log: true
+
+- name: K8s images processes
+  block:
+    - name: List of k8s images for version 'v{{ kubernetes.kubeVersion }}'
+      ansible.builtin.debug:
+        var: kubeImageList.stdout_lines
+
+    - name: Log in Artifactory with '{{ kubernetes.imagesRepo.username }}' user
+      community.general.docker_login:
+        registry: "{{ kubernetes.imagesRepo.registry }}"
+        username: "{{ kubernetes.imagesRepo.username }}"
+        password: "{{ kubernetes.imagesRepo.password }}"
+
+    - name: Check if images exist in Artifactory
+      register: artifactoryLookup
+      ansible.builtin.shell:
+        cmd: "docker manifest inspect {{ kubernetes.imagesRepo.registry }}/{{ item.split('/', 1)[1] }} > /dev/null ; echo $?"
+      loop: "{{ kubeImageList.stdout_lines }}"
+      no_log: true
+
+    - name: Select image(s) that do not exist in Artifactory
+      ansible.builtin.set_fact:
+        images_to_pull: "{{ artifactoryLookup | json_query(query) }}"
+      vars:
+        query: "results[?stdout=='1'].item"
+
+    - name: Image(s) to pull
+      ansible.builtin.debug:
+        var: images_to_pull
+      when: images_to_pull | length > 0
+
+    - name: Pull k8s image(s)
+      community.general.docker_image:
+        name: "k8s.gcr.io/{{ item.split('/', 1)[1] }}"
+        source: pull
+      loop: "{{ images_to_pull }}"
+      when: images_to_pull | length > 0
+
+    - name: Push image(s) to Artifactory
+      community.general.docker_image:
+        name: "{{ item }}"
+        repository: "{{ kubernetes.imagesRepo.registry }}/{{ item.split('/', 1)[1] }}"
+        source: local
+        push: yes
+      loop: "{{ images_to_pull }}"
+      when: images_to_pull | length > 0
+
+    - name: Log out from Artifactory
+      community.general.docker_login:
+        registry: "{{ kubernetes.imagesRepo.registry }}"
+        state: absent
+
+    - name: Prune everything (including non-dangling images)
+      community.general.docker_prune:
+        timeout: 120
+        containers: yes
+        images: yes
+        images_filters:
+          dangling: false
+        networks: yes
+        volumes: yes
+        builder_cache: yes
+      when: images_to_pull | length > 0
+  connection: local
+  delegate_to: localhost
+  run_once: true

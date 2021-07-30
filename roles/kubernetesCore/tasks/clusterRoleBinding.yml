@@ -1,0 +1,20 @@
+---
+# tasks file for roles/kubernetesCore clusterRoleBinding
+- name: Create ClusterRoleBinding for user '{{ rbac.clusterRoleBinding.metadata.name }}'
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: "{{ rbac.clusterRoleBinding.metadata.name }}"
+      roleRef:
+        kind: "{{ rbac.clusterRoleBinding.roleRef.kind }}"
+        name: "{{ rbac.clusterRoleBinding.roleRef.name }}"
+        apiGroup: rbac.authorization.k8s.io
+      subjects:
+        - kind: "{{ rbac.clusterRoleBinding.subjects.kind }}"
+          name: "{{ rbac.clusterRoleBinding.subjects.name }}"
+          namespace: "{{ rbac.clusterRoleBinding.subjects.namespace }}"
+  connection: local
+  delegate_to: localhost

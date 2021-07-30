@@ -1,0 +1,122 @@
+---
+# vars file for roles/activeUiRestApi
+version: 'v0.0.1'
+
+application:
+  serverPort: 5000
+  app: 'app-restapi-{{ kubernetes.rbac.user }}' # low case
+  serviceBackEndAdress: '{{ kubernetes.rbac.user }}-restapi.my.private.domain.com' # do not modify
+
+kubeadm:
+  serviceAccount:
+    name: 'service-account-restapi-{{ kubernetes.rbac.user }}'
+  cluster:
+    roleName: 'role-restapi-{{ kubernetes.rbac.user }}'
+    roleBindingName: 'rolebinding-restapi-{{ kubernetes.rbac.user }}'
+    namespace: 'namespace-{{ kubernetes.rbac.user }}'
+
+rbac:
+  serviceAccount:
+    metadata:
+      name: '{{ kubeadm.serviceAccount.name }}' # if not defined autoassigned default
+      namespace: '{{ kubeadm.cluster.namespace }}'
+  role:
+    metadata:
+      name: '{{ kubeadm.cluster.roleName }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+  roleBinding:
+    metadata:
+      name: '{{ kubeadm.cluster.roleBindingName }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+    roleRef:
+      kind: 'Role' # Role or ClusterRole
+      name: '{{ kubeadm.cluster.roleName }}' # Name of the Role or ClusterRole to bind to.
+    subjects:
+      kind: 'ServiceAccount' # User or ServiceAccount
+      name: '{{ kubeadm.serviceAccount.name }}' # if not defined autoassigned default
+      namespace: '{{ kubeadm.cluster.namespace }}'
+
+domain:
+  url: '{{ application.serviceBackEndAdress }}'
+
+deployment:
+  metadata:
+    name: 'deployment-restapi-{{ application.app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'deployment-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'webServer'
+      managed_by: 'ansible'
+  spec:
+    replicas: '1'
+    selector:
+      matchLabels:
+        app: '{{ application.app }}'
+    template:
+      metadata:
+        labels:
+          app: '{{ application.app }}'
+      spec:
+        serviceAccountName: '{{ kubeadm.serviceAccount.name }}'
+        containers:
+          name: '{{ application.app }}'
+          image: 'rmy.private.docker.domain/activeui-server:0.0.1'
+          imagePullPolicy: 'IfNotPresent'
+          resources:
+            requests:
+              memory: '64Mi'
+              cpu: '250m'
+            limits:
+              memory: '128Mi'
+              cpu: '500m'
+          ports:
+            containerPort: '{{ application.serverPort }}'
+
+service:
+  metadata:
+    name: 'service-restapi-{{ kubernetes.rbac.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'service-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'service-ingress'
+      managed_by: 'ansible'
+  spec:
+    selector:
+      app: '{{ application.app }}'
+    ports:
+      name: 'http'
+      port: 80
+      targetPort: '{{ application.serverPort }}'
+    type: 'ClusterIP'
+
+ingress:
+  metadata:
+    name: 'ingress-restapi-{{ kubernetes.rbac.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'ingress-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'ingress-{{ env_variable }}'
+      managed_by: 'ansible'
+  spec:
+    tls:
+      hosts: '{{ domain.url }}'
+    rules:
+      host: '{{ domain.url }}'
+      http:
+        paths:
+          path: '/'
+          pathType: 'Prefix'
+          backend:
+            service:
+              name: '{{ service.metadata.name }}'
+              port:
+                number: 80

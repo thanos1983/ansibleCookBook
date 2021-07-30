@@ -1,0 +1,116 @@
+---
+# vars file for roles/activeUiFrontEnd
+version: 'v0.0.1'
+
+application:
+  serverPort: 3000
+  app: 'app-frontend-{{ kubernetes.rbac.user }}' # low case
+  serviceBackEndAdress: 'activepivot.my.sample.domain.com'
+
+kubeadm:
+  cluster:
+    namespace: 'namespace-{{ kubernetes.rbac.user }}'
+
+domain:
+  url: '{{ kubernetes.rbac.user }}.my.sample.domain.com' # do not modify
+
+deployment:
+  metadata:
+    name: 'deployment-{{ application.app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'deployment-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'frondEndwebServer'
+      managed_by: 'ansible'
+  spec:
+    replicas: '1'
+    selector:
+      matchLabels:
+        app: '{{ application.app }}'
+    template:
+      metadata:
+        labels:
+          app: '{{ application.app }}'
+      spec:
+        containers:
+          name: '{{ application.app }}'
+          image: 'my.private.docker.repo/h21-activeui:0.0.6'
+          imagePullPolicy: 'IfNotPresent'
+          resources:
+            requests:
+              memory: '64Mi'
+              cpu: '250m'
+            limits:
+              memory: '128Mi'
+              cpu: '500m'
+          env:
+            name1: 'CONTENT_SERVER'
+            value1: 'https://{{ application.serviceBackEndAdress }}'
+            name2: 'ACTIVE_PIVOT_SERVER'
+            value2: 'https://{{ application.serviceBackEndAdress }}'
+          ports:
+            containerPort: '{{ application.serverPort }}'
+
+service:
+  metadata:
+    name: 'service-{{ kubernetes.rbac.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'service-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'service-ingress'
+      managed_by: 'ansible'
+  spec:
+    selector:
+      app: '{{ application.app }}'
+    ports:
+      name: 'frontend'
+      port: 80
+      targetPort: '{{ application.serverPort }}'
+    type: 'ClusterIP'
+
+ingress:
+  metadata:
+    name: 'ingress-{{ kubernetes.rbac.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'ingress-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'ingress-{{ env_variable }}'
+      managed_by: 'ansible'
+  spec:
+    tls:
+      hosts: '{{ domain.url }}'
+    rules:
+      host: '{{ domain.url }}'
+      http:
+        paths:
+          path: '/'
+          pathType: 'Prefix'
+          backend: 
+            service: 
+              name: '{{ service.metadata.name }}'
+              port:
+                number: 80
+  certfiles:
+    ca: 'ca.cert'
+    key: 'ca.key'
+    crt: 'ca.crt'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/ingress/ssl/my.pfx'
+    secret_properties: 'secrets/common/ingress/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.crt }}'

@@ -1,0 +1,51 @@
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: InitConfiguration
+certificateKey: {{ masterPrimeCertKey }}
+localAPIEndpoint:
+  advertiseAddress: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+  bindPort: {{ kubernetes.controlPlanePort }}
+nodeRegistration:
+  criSocket: {{ kubernetes.socket.crio }}
+  name: {{ ansible_hostname }}.{{ ansible_facts.dns.domain }}
+  taints:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiServer:
+  certSANs:
+{% for ind in range(0, (groups['kubernetesLoadBalancer'] | length | int)) %}
+  - "{{ loadBalancerFacts.results[ind].ansible_facts.facter_networking.ip }}"
+{% endfor %}
+  extraArgs:
+    authorization-mode: Node,RBAC
+    insecure-port: "0"
+  timeoutForControlPlane: 2m0s
+apiVersion: kubeadm.k8s.io/v1beta2
+certificatesDir: /etc/kubernetes/pki
+clusterName: kubernetes
+controllerManager: {}
+dns:
+  type: CoreDNS
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+controlPlaneEndpoint: {{ groups['kubernetesLoadBalancer'][0] }}:{{ kubernetes.controlPlanePort }}
+imageRepository: {{ kubernetes.imagesRepo.registry }}
+kind: ClusterConfiguration
+kubernetesVersion: {{ kubernetes.kubeVersion }}
+networking:
+  dnsDomain: cluster.local
+  serviceSubnet: {{ kubeadm.podNetworkCidr[networkingOption] }}
+scheduler: {}
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: "ipvs"
+ipvs:
+  strictARP: true
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+imageGCLowThresholdPercent: 80
+imageGCHighThresholdPercent: 85
+cgroupDriver: {{ kubernetes.cgroup_driver }}

@@ -1,0 +1,42 @@
+---
+# vars file for roles/haproxy
+version: '2.4.1'
+
+haproxy:
+  src: 'https://my.private.repo/zip/haproxy-{{ version }}.tar.gz'
+  podIngress:
+    nginx: 'haproxyNginx.cfg.j2'
+    haProxy: 'haproxyHaproxy.cfg.j2'
+  port:
+    frontEndPort: '6443'
+    backEndPort: '6443'
+  directories:
+    bin: '/usr/bin'
+    conf: '/etc/haproxy'
+    stats: '/var/lib/haproxy'
+    cert: '/etc/haproxy/certs.d'
+    error: '/var/log/haproxy/log/errors'
+  certfiles:
+    ca: 'ca.cert'
+    key: 'haproxy.key'
+    crt: 'haproxy.crt'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/haproxy/ssl/my.pfx'
+    secret_properties: 'secrets/common/haproxy/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/my.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ haproxy.certfiles.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ haproxy.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ haproxy.certfiles.crt }}'
+
+errorfiles:
+  400: '{{ haproxy.directories.error }}/400.http'
+  403: '{{ haproxy.directories.error }}/403.http'
+  408: '{{ haproxy.directories.error }}/408.http'
+  500: '{{ haproxy.directories.error }}/500.http'
+  502: '{{ haproxy.directories.error }}/502.http'
+  503: '{{ haproxy.directories.error }}/503.http'
+  504: '{{ haproxy.directories.error }}/504.http'

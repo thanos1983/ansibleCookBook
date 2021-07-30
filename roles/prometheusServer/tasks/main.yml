@@ -1,0 +1,21 @@
+---
+# tasks file for roles/prometheusServer main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Create system Account
+  ansible.builtin.include_tasks: account.yml
+
+- name: Get CA certificates from Vault for Prometheus
+  ansible.builtin.include_role:
+    name: vault
+
+- name: Create dir and copy prometheus configurations
+  ansible.builtin.include_tasks: conf.yml
+
+- name: Deploy Prometheus Server
+  ansible.builtin.include_tasks: deployment.yml

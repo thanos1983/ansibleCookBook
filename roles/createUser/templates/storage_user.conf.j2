@@ -1,0 +1,6 @@
+[storage]
+  driver = "overlay"
+  runroot = "{{ storage.podman.runroot }}"
+  graphroot = "{{ storage.podman.graphroot }}"
+  [storage.options]
+    mount_program = "/usr/bin/fuse-overlayfs"

@@ -1,0 +1,71 @@
+---
+# tasks file for roles/kubernetesDemos virtualization
+- name: Create k8s user and assign RBAC
+  ansible.builtin.include_role:
+    name: kubernetesRbac
+
+- name: Create Secret(s)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: secrets
+
+- name: Copy config files of RBAC user
+  block:
+    - name: Remove admin cache
+      ansible.builtin.file:
+        path: "~/.kube/cache"
+        state: absent
+    
+    - name: Copy from '/tmp/rbac-{{ kubernetes.rbac.user }}' to ~/kube/config
+      ansible.builtin.copy:
+        src: "/tmp/rbac-{{ kubernetes.rbac.user }}/{{ item }}"
+        dest: "~/.kube/"
+        remote_src: yes
+      loop: "{{ rbacConfFiles }}"
+
+    - name: Rename '{{ kubernetes.rbac.user }}.kubeconfig' to conf
+      ansible.builtin.copy:
+        src: "~/.kube/{{ kubernetes.rbac.user }}.kubeconfig"
+        dest: "~/.kube/config"
+        remote_src: yes
+        backup: yes
+
+    - name: Remove unecessary files
+      ansible.builtin.file:
+        path: "~/.kube/{{ kubernetes.rbac.user }}.kubeconfig"
+        state: absent
+
+    - name: Deploy FasS
+      community.kubernetes.k8s:
+        state: present
+        template: "{{ role_path }}/templates/{{ fass.file }}"
+
+    - name: Apply http trigger
+      community.kubernetes.k8s:
+        state: present
+        template: "{{ role_path }}/templates/{{ httpTrigger.file }}"
+
+    - name: Validate Uri
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: uriValidation
+      vars:
+        url: "{{ httpTrigger.spec.host_name }}"
+  rescue:
+    - name: Remove files in case of error
+      ansible.builtin.file:
+        path: "~/.kube/{{ item }}"
+        state: absent
+      loop:
+        - "/tmp/rbac-{{ kubernetes.rbac.user }}"
+        - "{{ rbacConfFiles }}"
+        - "~/.kube/cache"
+
+    - name: Recover admin conf file
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "~/.kube/config"
+      with_fileglob: "~/.kube/config.*"
+  connection: local
+  delegate_to: localhost
+  run_once: true

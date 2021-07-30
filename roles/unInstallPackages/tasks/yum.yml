@@ -1,0 +1,14 @@
+---
+# tasks file for roles/unInstallPackages yum
+- name: remove yum packages 
+  become: true
+  ansible.builtin.yum:
+    name: "{{ item }}"
+    state: absent
+    autoremove: yes
+  loop: "{{ removePackages }}"
+
+- name: autoremove all unneeded packages / dependencies
+  become: true
+  ansible.builtin.yum:
+    autoremove: true

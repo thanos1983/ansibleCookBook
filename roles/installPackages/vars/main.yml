@@ -1,0 +1,76 @@
+---
+# vars file for installPackages
+yumPackages:
+  - python36
+  - python36-libs
+  - python36-devel
+  - python36-pip
+  - python-pip
+  - cowsay
+  - vim
+  - jq
+  - sshpass
+  - yum-utils
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - cockpit
+  - cockpit-docker
+  - NetworkManager
+  - deltarpm
+  - ipvsadm
+  - gcc
+  - systemd-devel
+  - file-devel
+  - libssh-devel
+  - httpd-tools
+
+yumTools:
+  - '@Development tools'
+
+dnfPackages:
+  - gcc
+  - vim
+  - jq
+  - sshpass
+  - dnf-utils
+  - runc
+  - podman
+  - cockpit
+  - slirp4netns
+  - certmonger
+  - realmd
+  - tlog
+  - cockpit-composer
+  - cockpit-dashboard
+  - cockpit-machines
+  - cockpit-packagekit
+  - cockpit-pcp
+  - cockpit-podman
+  - cockpit-session-recording
+  - bash-completion
+  - podman-docker
+  - python3-devel
+  - pcp-pmda-podman
+  - pcp-system-tools
+  - pcp-zeroconf
+  - pcp-doc
+  - pcp-gui
+  - pcp-system-tools
+  - ipvsadm
+  - systemd-devel
+  - libssh-devel
+  - httpd-tools
+
+dockerPackages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+
+systemctlPackages:
+  - cockpit.socket
+  - docker
+
+dnfTools:
+  - '@Development tools'
+  - '@container-tools'

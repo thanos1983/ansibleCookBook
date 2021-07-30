@@ -1,0 +1,18 @@
+---
+# tasks file for containersCore cleanupCrio
+- name: Remove CRI-O directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ storage.crio.values() | flatten }}"
+    - "{{ kubernetes.crio.user }}"
+
+- name: Remove CRI-O configurations if choosen
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ crio.dirs }}"
+  when: removeCrioConf | default(false)

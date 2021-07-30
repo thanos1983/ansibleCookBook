@@ -1,0 +1,38 @@
+---
+# tasks file for roles/crio yum
+- name: Clearing the yum Caches
+  become: true
+  ansible.builtin.shell:
+    cmd: "yum clean all --enablerepo={{ kubernetes_repo }}"
+  args:
+    warn: false
+  no_log: true
+
+- name: Remove old kubernetes packages for RedHat-7 if exist
+  become: true
+  ansible.builtin.shell:
+    cmd: "yum remove -y {{ item }}"
+  loop: "{{ kubernetes.packages }}"
+  args:
+    warn: false
+
+- name: Install / upgrade kubernetes packages for RedHat-7
+  register: packages
+  become: true
+  ansible.builtin.shell:
+    cmd: "yum install -y {{ item }}-{{ kubernetes.kubeVersion }} --disableexcludes={{ kubernetes_repo }} --enablerepo={{ kubernetes_repo }}"
+  loop: "{{ kubernetes.packages }}"
+  args:
+    warn: false
+
+- name: Configure node ip for RedHat-7
+  become: true
+  ansible.builtin.lineinfile:
+    create: yes
+    path: /etc/sysconfig/kubelet
+    regexp: "^KUBELET_EXTRA_ARGS=$"
+    line: KUBELET_EXTRA_ARGS=--node-ip={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart kubelet

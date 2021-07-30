@@ -1,0 +1,8 @@
+---
+# tasks file for roles/kubernetesCore configMap
+- name: Create '{{ configMap.data.name }}' file for Deployment
+  community.kubernetes.k8s:
+    state: "{{ configMapState | default('present') }}"
+    template: "{{ configMapFilePath }}"
+  connection: local
+  delegate_to: localhost

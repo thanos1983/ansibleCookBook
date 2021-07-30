@@ -1,0 +1,20 @@
+---
+# tasks file for roles/docker bash
+- name: Get info for docker using a script
+  no_log: true
+  register: docker_bash
+  ansible.builtin.script: docker_info.sh
+
+- name: Debug docker data from bash script
+  ansible.builtin.debug:
+    var: docker_bash.stdout_lines
+
+- name: Get Volume Group of docker root dir
+  no_log: true
+  register: root_dir
+  ansible.builtin.shell:
+    cmd: "df -h {{ docker_bash.stdout_lines[2].split(' ')[-1] }}"
+
+- name: Debug root volume group docker
+  ansible.builtin.debug:
+    var: root_dir.stdout_lines

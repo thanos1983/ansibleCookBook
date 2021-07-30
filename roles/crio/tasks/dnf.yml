@@ -1,0 +1,44 @@
+---
+# tasks file for roles/crio dnf
+- name: Get the rpm package facts for RedHat-8
+  ansible.builtin.package_facts:
+    manager: "auto"
+  no_log: true
+
+- name: Force fail if the python interpreter is not python 3 for RedHat-8
+  ansible.builtin.fail:
+    msg: Check the ansible.cfg or the group vars of the inventory file for the python interpreter. Module package_facts works only with Python 2 for RH7.
+  when: ansible_facts.packages|length == 0
+
+- name: Debug kupernetes packages versions if installed for RedHat-8
+  ansible.builtin.debug:
+    msg: "Package {{ item }} with version: {{ ansible_facts.packages[item][0].version }} is installed!"
+  when: "item in ansible_facts.packages"
+  loop: "{{ kubernetes.packages }}"
+
+- name: Clearing the dnf Caches
+  become: true
+  ansible.builtin.shell:
+    cmd: "dnf clean all --enablerepo={{ kubernetes_repo }}"
+  args:
+    warn: false
+  no_log: true
+
+- name: Install /upgrade kubernetes packages for RedHat-8"
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: latest
+  when: "item not in ansible_facts.packages"
+  loop: "{{ kubernetes.packages }}"
+ 
+- name: Configure node ip for RedHat-8
+  become: true
+  community.general.lineinfile:
+    create: yes
+    path: /etc/sysconfig/kubelet
+    line: KUBELET_EXTRA_ARGS=--node-ip={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+    owner: root
+    group: root
+    mode: '0644'
+  notify: restart kubelet

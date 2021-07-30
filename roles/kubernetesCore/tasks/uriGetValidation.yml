@@ -1,0 +1,23 @@
+---
+# tasks file for roles/kubernetesCore uriGetValidation
+- name: Fail if the GET request towards '{{ domain.url }}' can not be processed
+  ansible.builtin.uri:
+    url: "https://{{ domain.url }}"
+    method: GET
+    return_content: yes
+    body_format: json
+    body:
+      namespace: "{{ kubeadm.cluster.namespace }}"
+    headers:
+      Content-Type: application/json
+  register: _result
+  until: _result.status == 200
+  retries: 10
+  delay: 5
+  connection: local
+  delegate_to: localhost
+
+- name: Debug Content if successful
+  ansible.builtin.debug:
+    var: _result.content
+  when: _result.status == 200

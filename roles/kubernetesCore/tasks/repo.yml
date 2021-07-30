@@ -1,0 +1,30 @@
+---
+# tasks file for kubernetes repo
+- name: Check if the node is registered on RH Satelite
+  ansible.builtin.script: rhnRegister.sh
+  register: rhn_register
+
+- name: debug rhn_register
+  ansible.builtin.debug:
+    var: rhn_register.stdout_lines[0]
+  when: rhn_register.stdout_lines[0] != "Not found"
+
+- name: Fail if the red had node is not registered
+  ansible.builtin.fail:
+    msg: The node is not registered with the satelite contact Linux team
+  when: rhn_register.stdout_lines[0] == "Not found" 
+
+- name: Add kubernetes repository
+  become: true
+  register: repo
+  ansible.builtin.yum_repository:
+    file: "{{ kubernetes_repo }}"
+    name: "{{ kubernetes_repo }}"
+    description: "{{ kubernetes_repo }}"
+    baseurl: http://{{ rhn_register.stdout_lines[0] }}/pub/repos/kubernetes
+    gpgkey: 
+      - http://{{ rhn_register.stdout_lines[0] }}/pub/repos/gpgkeys/yum-key.gpg
+      - http://{{ rhn_register.stdout_lines[0] }}/pub/repos/gpgkeys/rpm-package-key.gpg
+    enabled: no
+    gpgcheck: yes
+    exclude: "{{ kubernetes.packages }}"

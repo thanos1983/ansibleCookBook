@@ -1,0 +1,36 @@
+---
+# tasks file for roles/kubernetesMaster networkPod
+- name: Deploy network pod '{{ kubeadm.podNetworkElement[networkingOption] }}'
+  community.kubernetes.k8s:
+    state: present
+    src: "{{ role_path }}/files/{{ kubeadm.podNetworkElement[networkingOption] }}"
+  when: "networkingOption != 'weaveNet'"
+  connection: local
+  delegate_to: localhost
+  no_log: true
+
+- name: Weave-Net encryption. Skip if network Pod not Weave-Net
+  block:
+    - name: Copy password file including content only for Weave-Net
+      become: true
+      ansible.builtin.copy:
+        content: "{{ user | password_hash('sha512', 65534 | random(seed=inventory_hostname) | string) }}"
+        dest: "{{ kubeadm.weaveNet.passwordFilePath }}"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0644"
+
+    - name: Create secret for encryption only for Weave-Net
+      ansible.builtin.shell:
+        cmd: "kubectl create secret -n kube-system generic weave-passwd --from-file={{ kubeadm.weaveNet.passwordFilePath }}"
+      connection: local
+      delegate_to: localhost
+
+    - name: Launch 'weaveNet' network element
+      community.kubernetes.k8s:
+        state: present
+        src: "{{ role_path }}/files/{{ kubeadm.podNetworkElement[networkingOption] }}"
+      connection: local
+      delegate_to: localhost
+      no_log: true
+  when: "networkingOption == 'weaveNet'"

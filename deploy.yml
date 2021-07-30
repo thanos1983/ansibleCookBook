@@ -1,0 +1,70 @@
+---
+- hosts: "{{ target_hosts }}"
+  remote_user: "{{ ansible_user }}"
+  any_errors_fatal: true
+  
+  roles:
+    - role: dockerLookUp
+      tags: [ dockerLookUp ]
+    - role: addRepo
+      tags: [ new, addRepo ]
+    - role: addPipConf
+      tags: [ new, addPipConf ]
+    - role: dockerPruneCron
+      tags: [ dockerPruneCron ]
+    - role: dockerDaemonTLS
+      tags: [ dockerDaemonTLS ]
+    - role: installPackages
+      tags: [ new, old, installPackages ]
+    - role: removeUser
+      tags: [ removeUser ]
+    - role: removeDirectories
+      tags: [ removeDirectories ]
+    - role: createUser
+      tags: [ new, createUser ]
+    - role: changeDirOwnership
+      tags: [ changeDirOwnership ]
+    - role: changeGroupID
+      tags: [ changeGroupID ]
+    - role: logicalVolumeManagementK8s
+      tags: [ logicalVolumeManagementK8s ]
+    - role: logicalVolumeManagement
+      tags: [ logicalVolumeManagement ]
+    - role: kubernetesCore
+      tags: [ kubernetesCore ]
+    - role: kubernetesUpgrade
+      tags: [ kubernetesUpgrade ]
+    - role: kubernetesMaster
+      tags: [ kubernetesMaster ]
+    - role: kubernetesSecondaryMaster
+      tags: [ kubernetesSecondaryMaster ]
+    - role: kubernetesWorker
+      tags: [ kubernetesWorker ]
+    - role: kubernetesIngress
+      tags: [ kubernetesIngress ]
+    - role: kubernetesDemos
+      tags: [ kubernetesDemos ]
+    - role: kubernetesDestroy
+      tags: [ kubernetesDestroy ]
+    - role: minio
+      tags: [ minio ]
+    - role: activeUiRbac
+      tags: [ activeUiRbac ]
+    - role: activeUiBackEnd
+      tags: [ activeUiBackEnd ]
+    - role: activeUiFrontEnd
+      tags: [ activeUiFrontEnd ]
+    - role: activeUiRestApi
+      tags: [ activeUiRestApi ]
+    - role: prometheusServer
+      tags: [ prometheusServer ]
+    - role: consul
+      tags: [ consul ]
+    - role: vault
+      tags: [ vault ]
+    - role: haproxy
+      tags: [ haproxy ]
+    - role: sshping
+      tags: [ sshping ]
+    - role: webSocket
+      tags: [ webSocket ]

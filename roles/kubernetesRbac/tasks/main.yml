@@ -1,0 +1,91 @@
+---
+# tasks file for roles/kubernetesRbac main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Get list of active master node(s)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: activeMasterNodes
+
+- name: Set demo user if unset
+  ansible.builtin.set_fact:
+    kubernetes.rbac.user: "test"
+  when: kubernetes.rbac.user is undefined
+
+- name: Generate an OpenSSH keypair with default values (4096 bits, rsa)
+  run_once: true
+  block:
+    - name: Create Namespace
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: namespace
+
+    - name: Create kubeconfig file for technical user
+      become: true
+      ansible.builtin.import_role:
+        name: kubernetesCore
+        tasks_from: userKubeconfig
+      delegate_to: "{{ masterActiveNodes[0] }}"
+
+    - name: Remove uncessary file(s)
+      become: true
+      ansible.builtin.import_role:
+        name: kubernetesCore
+        tasks_from: cleanup
+      vars:
+        listfilesToRemove: "{{ cleanup }}"
+      delegate_to: "{{ masterActiveNodes[0] }}"
+
+    - name: Create RBAC role
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: role
+
+    - name: Create RoleBind
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: roleBinding
+  rescue:
+    - name: Remove Namespace
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: namespace
+      vars:
+        namespaceState: absent
+
+    - name: Remove dir '{{ rbac.dir }}' from remote
+      become: true
+      ansible.builtin.import_tasks: cleanupRbac.yml
+      delegate_to: "{{ masterActiveNodes[0] }}"
+
+    - name: Force fail in case of error
+      ansible.builtin.fail:
+        msg: Check logs and try to redeploy
+
+- name: Get kubeconfig dir from remote host to local
+  become: true
+  block:
+    - name: Get kubeconfig dir '{{ rbac.dir }}' for user '{{ kubernetes.rbac.user }}'
+      ansible.posix.synchronize:
+        mode: pull
+        src: "{{ rbac.dir }}"
+        dest: /tmp
+  rescue:
+    - name: Remove dir '{{ rbac.dir }}' from local
+      ansible.builtin.file:
+        path: "/tmp/{{ rbac.dir }}"
+        state: absent
+      connection: local
+      delegate_to: localhost
+  always:
+    - name: Remove dir '{{ rbac.dir }}' from remote
+      ansible.builtin.file:
+        path: "{{ rbac.dir }}"
+        state: absent
+      delegate_to: "{{ masterActiveNodes[0] }}"
+  run_once: true

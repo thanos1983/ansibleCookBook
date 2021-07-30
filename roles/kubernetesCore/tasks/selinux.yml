@@ -1,0 +1,50 @@
+---
+# tasks file for roles/kubernetesCore selinux
+- name: Validate fstab in case of reboot
+  become: true
+  ansible.builtin.shell:
+    cmd: mount -av
+  register: mount_rc
+  args:
+    warn: false
+  no_log: true
+
+- name: Debug mount RC
+  ansible.builtin.debug:
+    var: mount_rc.stdout_lines
+
+- name: Put SELinux in permissive mode, logging actions that would be blocked.
+  become: true
+  register: selinux_mode
+  ansible.posix.selinux:
+    policy: targeted
+    state: permissive
+
+- name: restart node(s)
+  become: true
+  ansible.builtin.reboot:
+    msg: "Rebooting node {{ inventory_hostname }}"
+  when: selinux_mode.reboot_required == true
+
+- name: Stop CRI-O socket
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: crio
+    serviceState: stopped
+
+- name: List / kill pid(s) if exist
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: hangedPids
+  vars:
+    socket: crio
+
+- name: Start CRI-O socket
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: crio
+    serviceState: restarted

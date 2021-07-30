@@ -1,0 +1,70 @@
+---
+# tasks file for roles/kubernetesCore main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python"
+
+- name: Remove node(s) from cluster if changing character (Worker <-> Master)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: drain
+  vars:
+    assignPrimeMaster: true
+
+- name: Destroy Kube on node(s) in case the node was deployed previously up to 2m
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: destroy
+
+- name: Network Configurations
+  ansible.builtin.include_tasks: network.yml
+
+- name: CRI-O
+  ansible.builtin.include_role:
+    name: crio
+
+- name: Swap Configurations
+  ansible.builtin.include_tasks: swap.yml
+
+- name: Add Kubernetes Repo
+  ansible.builtin.include_tasks: repo.yml
+
+- name: Add Kubernetes Restrictions
+  ansible.builtin.include_tasks: blackList.yml
+
+- name: Centos 7 or RH 7
+  ansible.builtin.include_role:
+    name: crio
+    tasks_from: yum.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Centos 8 or RH 8
+  ansible.builtin.include_role:
+    name: crio
+    tasks_from: dnf.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: Pull / push images required by kube packages
+  ansible.builtin.include_tasks: pullKubeImages.yml
+  tags: [ never ] # we can not pull images from nodes skip
+
+- name: Check ports before launching
+  ansible.builtin.include_tasks: kubelet.yml
+
+- name: Selinux configurations
+  ansible.builtin.include_tasks: selinux.yml
+
+- name: CRI-O / Metrics validation
+  ansible.builtin.include_role:
+    name: crio
+    tasks_from: validateCrio.yml
+
+- name: Serverless Cli
+  ansible.builtin.include_tasks: serverlessCli.yml

@@ -1,0 +1,13 @@
+---
+# tasks file for roles/kubernetesCore uriContentValidation
+- name: Fail if the url '{{ domain.url }}' is not accessible
+  ansible.builtin.uri:
+    url: "https://{{ domain.url }}"
+    return_content: yes
+  register: urlContent
+  until: urlContent.status == 200
+  retries: 10
+  delay: 5
+  failed_when: domain.validation_content not in urlContent.content
+  connection: local
+  delegate_to: localhost

@@ -1,0 +1,19 @@
+- name: Copy CNI networking file
+  become: true
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/cni/net.d/{{ item }}"
+  loop: "{{ kubeadm.cni }}" 
+
+- name: Restart service crio and reload
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    state: restarted
+    name: "{{ item }}"
+    daemon_reload: yes
+    daemon_reexec: yes
+  loop:
+    - crio
+    - kubelet

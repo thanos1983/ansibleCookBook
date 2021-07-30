@@ -1,0 +1,24 @@
+---
+# tasks file for roles/dockerDaemonTLS
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Block for Prometheus
+  block:
+    - name: Get CA certificates from Vault for Node Exporter
+      ansible.builtin.include_role:
+        name: vault
+
+    - name: Create relevant directories
+      ansible.builtin.include_role:
+        name: docker
+        tasks_from: ssl
+  always:
+    - name: Cleanup always at the end of previous tasks
+      ansible.builtin.include_role:
+        name: vault
+        tasks_from: cleanUp

@@ -1,0 +1,11 @@
+---
+# tasks file for containersCore service
+- name: Service processes
+  become: true
+  ansible.builtin.systemd:
+    name: '{{ serviceName }}'
+    masked: no
+    enabled: yes
+    daemon_reload: yes
+    daemon_reexec: yes
+    state: '{{ serviceState }}'

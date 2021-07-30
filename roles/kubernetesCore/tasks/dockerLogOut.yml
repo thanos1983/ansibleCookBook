@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesCore dockerLogOut
+- name: Log out from Artifactory from "{{ kubernetes.imagesRepo.username }}" user
+  become: true
+  community.docker.docker_login:
+    registry: "{{ kubernetes.imagesRepo.registry }}"
+    state: absent

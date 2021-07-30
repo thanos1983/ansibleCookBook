@@ -1,0 +1,23 @@
+---
+# tasks file for roles/kubernetesCore roleRestApiActiveUi
+- name: Create limited role for namespace '{{ rbac.role.metadata.namespace }}'
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: Role
+      metadata:
+        name: "{{ rbac.role.metadata.name }}"
+        namespace: "{{ rbac.role.metadata.namespace }}"
+      rules:
+      - apiGroups: [""]
+        resources: ["configmaps", "deployments", "pods", "services"]
+        verbs: ["get", "list", "watch", "create", "update", "delete"]
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses"]
+        verbs: ["get", "list", "watch", "create", "update", "delete"]
+      - apiGroups: ["batch", "extensions", "apps"]
+        resources: ["deployments"]
+        verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  connection: local
+  delegate_to: localhost

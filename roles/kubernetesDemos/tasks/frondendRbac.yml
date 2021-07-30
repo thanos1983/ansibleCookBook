@@ -1,0 +1,65 @@
+---
+# tasks file for roles/kubernetesDemos frondendRbac
+- name: Create k8s user and assign RBAC
+  ansible.builtin.include_role:
+    name: kubernetesRbac
+
+- name: Deploy / Create Service(s), ConfigMap(s) and Ingress
+  block:
+    - name: Create '{{ configMap.data.name }}' file for Deployment
+      community.kubernetes.k8s:
+        state: present
+        template: "{{ role_path }}/templates/{{ configMap.data.configMap }}"
+      connection: local
+      delegate_to: localhost
+
+    - name: Create Secret(s)
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: secrets
+
+    - name: Deployment pod(s)
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: deployVolumes
+
+    - name: Create Service(s)
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: service
+
+    - name: Create Ingress NGINX
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressNginx
+      when: ingressOption == "nginx"
+
+    - name: Create Ingress HaProxy
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressDefaultBackendHaProxy
+      when: ingressOption == "haProxy"
+
+    - name: Validate Uri
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: uriValidation
+      vars:
+        url: "{{ domain.url }}"
+  rescue:
+    - name: Remove Namespace
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: namespace
+      vars:
+        namespaceState: absent
+
+    - name: Remove RBAC data locally
+      ansible.builtin.include_role:
+        name: kubernetesRbac
+        tasks_from: cleanupRbac
+
+    - name: Force fail in case of error
+      ansible.builtin.fail:
+        msg: Check logs and try to redeploy
+  run_once: true

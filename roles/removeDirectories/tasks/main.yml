@@ -1,0 +1,8 @@
+---
+# tasks file for removeDirectories
+- name: Remove user "{{ remove_user }}" directories
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ userDirectories }}"

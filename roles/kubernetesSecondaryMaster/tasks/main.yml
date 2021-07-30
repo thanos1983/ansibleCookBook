@@ -1,0 +1,98 @@
+---
+# tasks file for roles/kubernetesSecondaryMaster main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Remove node(s) from cluster if changing character (Worker <-> Master)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: drain
+  vars:
+    assignPrimeMaster: false
+
+- name: Destroy kube on node(s) in case the node was deployed previously up to 2m
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: destroy
+
+- name: Remove master node(s) from etcd cluster if registered
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: etcd
+  vars:
+    assignPrimeMaster: false
+
+- name: Load custom cert key
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: customCertKeyExtract
+  run_once: true
+
+- name: Upload control-plane certificates to the cluster
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: uploadCerts
+  run_once: true
+
+- name: Request to populate token from Master Prime
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: createToken
+  vars:
+    joinScript: join-command-plane.sh
+  run_once: true
+
+- name: Master Prime Cert Key
+  ansible.builtin.debug:
+    var: masterPrimeCertKey
+  run_once: true
+
+- name: Append to join command the socket
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: socket
+  vars:
+    joinScript: join-command-plane.sh
+  run_once: true
+
+- name: Add node to the cluster
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: addNodeToTheCluster
+  vars:
+    joinScript: join-command-plane.sh
+
+- name: kubeconfig for user
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubeconfig
+  vars:
+    configFile: admin.conf
+
+- name: Kubelet permissions
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubeletPermissions
+
+- name: Kubectl Autocompletion
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubectlAutocompletion
+
+- name: Label Node(s)
+  ansible.builtin.shell:
+    cmd: "kubectl label nodes {{ item }}.{{ ansible_facts.dns.domain }} node-role.kubernetes.io/master-"
+  loop: "{{ groups['kubernetes'] }}"
+  connection: local
+  delegate_to: localhost
+  run_once: true
+
+- name: Check status of cluster
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: status
+  run_once: true

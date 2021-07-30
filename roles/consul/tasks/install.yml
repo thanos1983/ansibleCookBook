@@ -1,0 +1,29 @@
+---
+# tasks file for roles/consul install
+- name: Create conf directory for consul
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    recurse: yes
+  loop:
+    - "{{ consul.directories.log }}"
+    - "{{ consul.directories.data }}"
+    - "{{ consul.directories.cert }}"
+
+- name: Extract "{{ consul.src }}" into "{{ consul.directories.bin }}"
+  become: true
+  ansible.builtin.unarchive:
+    src: "{{ consul.src }}"
+    dest: "{{ consul.directories.bin }}"
+    remote_src: yes
+
+- name: Copy general-info.sh script for consul
+  become: true
+  ansible.builtin.copy:
+    src: "general-info.sh"
+    dest: "{{ consul.directories.conf }}"
+    mode: "0644"
+    backup: yes

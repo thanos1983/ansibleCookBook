@@ -1,0 +1,30 @@
+---
+# tasks file for roles/consul oldConsulConf
+- name: Stop / disable service
+  become: true
+  ansible.builtin.systemd:
+    name: consul
+    force: yes
+    state: stopped
+    enabled: no
+
+- name: Remove systemd consul service
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ consul.oldConsulConf.systemdService }}"
+
+- name: Compress directory "{{ consul.oldConsulConf.dataDir }}" into "{{ consul.oldConsulConf.dataDir }}.tgz"
+  become: true
+  community.general.archive:
+    mode: "644"
+    owner: "{{ user }}"
+    group: "{{ group }}"
+    path: "{{ consul.oldConsulConf.dataDir }}"
+    remove: yes
+
+- name: Reload daemon to pick up new conf
+  become: true
+  ansible.builtin.systemd:
+    daemon_reload: yes

@@ -1,0 +1,44 @@
+---
+# tasks file for unInstallPipPackages
+- name: List all pip2 installed packages
+  register: pip2Freeze
+  ansible.builtin.shell:
+    cmd: "pip freeze | sed 's/==/ /' | awk '{print $1}'"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'  
+    - ansible_distribution_major_version == '7'
+
+- name: Debug pip2 freeze
+  ansible.builtin.debug:
+    var: pip2Freeze.stdout_lines
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'  
+    - ansible_distribution_major_version == '7'
+
+- name: Uninstall all required pip2 packages
+  become: true
+  ansible.builtin.pip:
+    name: "{{ pipUninstallPackages }}"
+    state: absent
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: List all pip3 installed packages
+  register: pip3Freeze
+  ansible.builtin.shell:
+    cmd: "pip3 freeze | sed 's/==/ /' | awk '{print $1}'"
+  when: "'python3-pip' in ansible_facts.packages"
+
+- name: Debug pip3 freeze
+  ansible.builtin.debug:
+    var: pip3Freeze.stdout_lines
+  when: "'python3-pip' in ansible_facts.packages"
+
+- name: UnInstall all required pip3 packages
+  become: true
+  ansible.builtin.pip:
+    name: "{{ pipUninstallPackages }}"
+    state: absent
+    executable: pip3.6
+  when: "'python3-pip' in ansible_facts.packages"

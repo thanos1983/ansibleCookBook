@@ -1,0 +1,12 @@
+---
+# tasks file for roles/webSocket systemd
+- name: restart services in all cases, also issue daemon-reload to pick up config changes
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes
+  loop: "{{ systemdServices }}"

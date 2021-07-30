@@ -1,0 +1,7 @@
+---
+# tasks file for roles/sshping yum
+- name: Install sshPing dependency packages for RH7
+  become: true
+  ansible.builtin.yum:
+    name: "{{ rpmPackages }}"
+    state: latest

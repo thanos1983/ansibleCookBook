@@ -1,0 +1,159 @@
+---
+# vars file for roles/kubernetesDemos
+app: 'sample-{{ kubernetes.rbac.user }}' # low case
+version: 'v0.0.1'
+configMapFilePath: '{{ ansible_parent_role_paths[0] }}/templates/{{ configMap.data.configMap }}'
+
+rbacConfFiles:
+  - 'ca.crt'
+  - '{{ kubernetes.rbac.user }}.crt'
+  - '{{ kubernetes.rbac.user }}.key'
+  - '{{ kubernetes.rbac.user }}.kubeconfig'
+
+kubeadm:
+  dir: '/tmp'
+  files:
+    demo: 'demo.yml'
+  cluster:
+    namespace: 'namespace-{{ kubernetes.rbac.user }}'
+
+fass:
+  file: 'test.yml.j2'
+  metadata:
+    name: 'test'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    label:
+      function: 'test'
+  spec:
+    runtime: 'python3.8'
+    timeout: '180'
+    handler: 'test.foo'
+    deps: ''
+    horizontalPodAutoscaler:
+      metadata:
+        name: 'test'
+        namespace: '{{ kubeadm.cluster.namespace }}'
+      spec:
+        maxReplicas: 4
+        metrics:
+          resource:
+            name: 'cpu'
+            targetAverageUtilization: 70
+            averageUtilization: 1
+        minReplicas: 2
+        scaleTargetRef:
+          kind: 'Deployment'
+          name: 'test'
+    function_content_type: 'text'
+
+httpTrigger:
+  file: 'httpTrigger.yml.j2'
+  metadata:
+    name: '{{ fass.metadata.name }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+  spec:
+    function_name: '{{ fass.metadata.label.function }}'
+    host_name: 'example.my.private.domain.com'
+
+configMap:
+  name: 'configmap-{{ kubernetes.rbac.user }}'
+  namespace: '{{ kubeadm.cluster.namespace }}'
+  labels:
+    name: 'configMap-{{ app }}'
+    instance: '{{ app }}'
+    version: '{{ version }}'
+    component: 'configMap-{{ ingressOption }}'
+    managed_by: 'ansible'
+  data:
+    name: 'index.html'
+    configMap: 'configMap.yml.j2'
+
+domain:
+  url: '{{ kubernetes.rbac.user }}.my.private.domain.com' # do not modify
+
+volumes:
+  name: 'html-index'
+  configMap:
+    name: '{{ configMap.name }}'
+
+deployment:
+  metadata:
+    name: 'deployment-{{ app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ app }}'
+  spec:
+    replicas: '2'
+    selector:
+      matchLabels:
+        app: '{{ app }}'
+    template:
+      metadata:
+        labels:
+          app: '{{ app }}'
+      spec:
+        containers:
+          name: '{{ app }}'
+          image: 'my.private.docker.repo/nginx:1.19.3'
+          imagePullPolicy: 'IfNotPresent'
+          ports:
+            containerPort: 80
+          volumeMounts:
+            name: '{{ volumes.name }}'
+            mountPath: '/usr/share/nginx/html'
+        volumes:
+          name: '{{ volumes.name }}'
+          configMap:
+            name: '{{ volumes.configMap.name }}'
+
+service:
+  metadata:
+    name: 'service-{{ app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+  spec:
+    selector:
+      app: '{{ app }}'
+    ports:
+      name: 'http'
+      port: 80
+      targetPort: 80
+    type: 'ClusterIP'
+
+ingress:
+  metadata:
+    name: 'ingress-{{ app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+  spec:
+    defaultBackend:
+      service:
+        name: 'service-{{ app }}'
+        port:
+          number: 80
+    tls:
+      hosts: '{{ domain.url }}'
+    rules:
+      host: '{{ domain.url }}'
+      http:
+        paths:
+          path: '/'
+          pathType: 'Prefix'
+          backend: 
+            service: 
+              name: 'service-{{ app }}'
+              port:
+                number: 80
+  certfiles:
+    key: 'ca.key'
+    crt: 'ca.crt'
+    cert: 'ca.cert'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/ingress/ssl/my.pfx'
+    secret_properties: 'secrets/common/ingress/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.cert }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ ingress.certfiles.crt }}'

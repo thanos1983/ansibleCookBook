@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesDemos
+- name: Demo RBAC / Frondend
+  ansible.builtin.include_tasks: frondendRbac.yml
+
+- name: Demo Virtualization
+  ansible.builtin.include_tasks: virtualization.yml

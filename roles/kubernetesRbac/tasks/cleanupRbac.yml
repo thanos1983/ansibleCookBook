@@ -1,0 +1,8 @@
+---
+# tasks file for roles/kubernetesRbac cleanupRbac
+- name: Remove sensitive data in case of error
+  ansible.builtin.file:
+    path: "{{ rbac.dir }}"
+    state: absent
+  connection: local
+  delegate_to: localhost

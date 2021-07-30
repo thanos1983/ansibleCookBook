@@ -1,0 +1,22 @@
+---
+# tasks file for roles/minio dirs
+- name: Create dirs in case they do not exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.value }}"
+    state: directory
+    recurse: yes
+    owner: "{{ user }}"
+    group: "{{ user }}"
+  with_dict: "{{ volumes }}"
+
+- name: Copy certs to remote host
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item.value }}"
+    directory_mode: true
+    dest: "{{ volumes.certificates }}/certs"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: '0644'
+  with_dict: "{{ certificates }}"

@@ -1,0 +1,70 @@
+---
+# tasks file for roles/haproxy install
+- name: Create necessary directorie(s) on node(s)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+    owner: root
+    group: root
+  loop:
+    - "{{ haproxy.directories.conf }}"
+    - "{{ haproxy.directories.stats }}"
+    - "{{ haproxy.directories.error }}"
+
+- name: Create error file(s) on node(s)
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: touch
+    owner: root
+    group: root
+    mode: '0644'
+  loop: "{{ errorfiles.values() | flatten }}"
+
+- name: Install OpenSSL for ssl on node(s)
+  become: true
+  ansible.builtin.yum:
+    name: openssl-devel
+    state: latest
+  when: "'openssl-devel' not in ansible_facts.packages"
+
+- name: Download, install and configure Haproxy
+  become: true
+  block:
+    - name: Download and unarchive the tar file from Artifactory
+      ansible.builtin.unarchive:
+        src: "{{ haproxy.src }}"
+        dest: "{{ haproxy.directories.conf }}"
+        remote_src: yes
+
+    - name: Compile package haproxy
+      community.general.make:
+        chdir: "{{ haproxy.directories.conf }}/haproxy-{{ version }}"
+        params:
+          TARGET: linux-glibc
+          USE_OPENSSL: 1
+
+    - name: Install package haproxy
+      community.general.make:
+        chdir: "{{ haproxy.directories.conf }}/haproxy-{{ version }}"
+        target: install
+
+    - name: Create a symbolic link
+      ansible.builtin.file:
+        src: /usr/local/sbin/haproxy
+        dest: /usr/sbin/haproxy
+        state: link
+
+    - name: Copy service file
+      ansible.builtin.copy:
+        src: "{{ haproxy.directories.conf }}/haproxy-{{ version }}/examples/haproxy.init"
+        dest: /etc/init.d/haproxy
+        remote_src: yes
+        mode: '0755'
+  always:
+    - name: Remove extracted tar file
+      ansible.builtin.file:
+        path: "{{ haproxy.directories.conf }}/haproxy-{{ version }}"
+        state: absent

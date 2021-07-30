@@ -1,0 +1,14 @@
+---
+# tasks file for roles/unInstallPackages dnf
+- name: remove dnf packages
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ item }}"
+    state: absent
+    autoremove: yes
+  loop: "{{ removePackages }}"
+
+- name: autoremove unneeded core packages / dependencies
+  become: true
+  ansible.builtin.dnf:
+    autoremove: yes

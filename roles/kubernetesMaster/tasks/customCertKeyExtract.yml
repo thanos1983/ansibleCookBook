@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesMaster customCertKeyExtract
+- name: Load custom cert key file to var
+  ansible.builtin.set_fact:
+    masterPrimeCertKey: "{{ lookup('file', '{{ role_path }}/files/{{ kubeadm.certCustomKeyFile }}') }}"
+  connection: local
+  delegate_to: localhost

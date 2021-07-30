@@ -1,0 +1,43 @@
+---
+# vars file for docker
+deprecatedDockerPackageNames:
+  - docker
+  - docker-client  
+  - docker-common               
+  - docker-client-latest                 
+  - docker-latest-logrotate                        
+  - docker-logrotate                           
+  - docker-engine
+
+prerequisiteDockerPackages:
+  - yum-utils  
+  - device-mapper-persistent-data             
+  - lvm2
+
+dockerPackages:       
+  - docker-ce        
+  - docker-ce-cli             
+  - containerd.io
+
+modprobeModules:
+  - overlay
+  - br_netfilter
+  - nf_conntrack
+
+dockerDirectories:
+  - /var/lib/docker
+  - /var/lib/docker-ce
+  - /var/lib/docker-engine
+
+dockerSysctl:
+  iptables:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1', sysctl_set: yes, state: present, reload: yes }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1', sysctl_set: yes, state: present, reload: yes }
+  overcommit:
+    - { name: 'vm.overcommit_memory', value: '1', sysctl_set: yes, state: present, reload: yes }
+
+dockerConfigurationFiles:
+  - { src: 'daemon.json', dest: '/etc/docker/', owner: 'root', group: 'root', mode: '0644' }
+  - { src: 'daemon.json', dest: '/etc/docker/daemon.json', owner: 'root', group: 'root', mode: '0644' }
+  - { src: 'docker.conf', dest: '/etc/systemd/system/docker.service.d/', owner: 'root', group: 'root', mode: '0644' }
+  - { src: 'docker.conf', dest: '/etc/systemd/system/docker.service.d/docker.conf', owner: 'root', group: 'root', mode: '0644' }

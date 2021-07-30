@@ -1,0 +1,16 @@
+---
+# tasks file for roles/kubernetesCore blackList
+- name: Create dir if not existing
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+  loop: "{{ blackList.dirs }}"
+
+- name: Copy black list modules to be blocked
+  become: true
+  ansible.builtin.copy:
+    src: "kubernetes-blacklist.conf"
+    dest: "{{ blackList.dirs[0] }}"
+    backup: yes

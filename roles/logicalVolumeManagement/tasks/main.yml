@@ -1,0 +1,17 @@
+---
+# tasks file for roles/logicalVolumeManagement main
+- name: Populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Centos 7 or RH 7
+  ansible.builtin.include_tasks: yum.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Centos 8 or RH 8
+  ansible.builtin.include_tasks: dnf.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'

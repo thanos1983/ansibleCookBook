@@ -1,0 +1,42 @@
+---
+# vars file for roles/consul main
+consul:
+  character: 'client'
+  datacenter: 'dc1'
+  acl_datacenter: 'dc1'
+  src: 'https://my.private.repo/zip/consul_1.9.4_linux_amd64.zip'
+  acl_token: 'myConsulToken'
+  acl_master_token: 'myMasterToken'
+  encrypt_str: 'encryptString'
+  configurationFile:
+    client: 'configClient.json.j2'
+    server: 'configServer.json.j2'
+  oldConsulConf:
+    dataDir: '/data01/{{ user }}/consul'
+    systemdService:
+      - '/etc/systemd/system/consul.service.d'
+      - '/usr/lib/systemd/system/consul.service'
+  port:
+    http: '8300'
+    https: '8301'
+  directories:
+    bin: '/usr/bin'
+    conf: '/etc/consul'
+    log: '/var/log/consul/log'
+    data: '/var/lib/consul/data'
+    cert: '/etc/consul/certs.d'
+  certfiles:
+    ca: 'ca.cert'
+    key: 'consul.key'
+    crt: 'consul.cert'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/consul/ssl/my.pfx'
+    secret_properties: 'secrets/common/consul/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/my.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ consul.certfiles.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ consul.certfiles.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ consul.certfiles.crt }}'

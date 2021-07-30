@@ -1,0 +1,14 @@
+---
+# tasks file for roles/kubernetesCore kubectlAutocompletion
+- name: Source the completion script in your ~/.bashrc for user 'root'
+  become: true
+  ansible.builtin.shell:
+    cmd: "kubectl completion bash >/etc/bash_completion.d/kubectl"
+
+- name: Source the completion script in your ~/.bashrc for user "'{{ user }}'"
+  become: true
+  become_user: "{{ user }}"
+  ansible.builtin.lineinfile:
+    path: ~/.bashrc
+    regexp: '^# User specific '
+    line: "source <(kubectl completion bash)"

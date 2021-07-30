@@ -1,0 +1,38 @@
+---
+# tasks file for roles/kubernetesCore serverlessCli
+- name: Check if kubeless is already installed
+  connection: local
+  delegate_to: localhost
+  ansible.builtin.stat:
+    path: "/usr/local/bin/kubeless"
+  register: stat_result
+
+- name: Install kubeless if kubeless cli not available
+  connection: local
+  delegate_to: localhost
+  block:
+    - name: Fetch and unzip binary file
+      ansible.builtin.unarchive:
+        src: "{{ item.value.src }}"
+        dest: "{{ item.value.dest }}"
+        remote_src: yes
+      loop: "{{ lookup('dict', serverless, wantlist=True) }}"
+
+    - name: Copy binary file
+      become: true
+      ansible.builtin.copy:
+        src: "{{ serverless.kubelet.dest }}/bundles/kubeless_linux-amd64/kubeless"
+        dest: "/usr/local/bin"
+        remote_src: yes
+        mode: '0755'
+  rescue:
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Check error above in logs
+  always:
+    - name: Cleanup to remove sensitive data
+      ansible.builtin.file:
+        path: "{{ item.value.dest }}/bundles"
+        state: absent
+      loop: "{{ lookup('dict', serverless, wantlist=True) }}"
+  when: stat_result.stat.exists == false

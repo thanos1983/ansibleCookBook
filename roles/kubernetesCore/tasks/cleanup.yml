@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesCore cleanup
+- name: Remove file(s)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ listfilesToRemove }}"

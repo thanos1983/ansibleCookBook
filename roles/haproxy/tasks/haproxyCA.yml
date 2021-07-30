@@ -1,0 +1,51 @@
+---
+# tasks file for roles/haproxy haproxyCA
+- name: HAproxy retrieve and push cert files to remote hosts
+  block:
+    - name: Change permissions to cert file(s)
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/{{ item }}"
+        mode: "0644"
+      loop:
+        - "{{ haproxy.certfiles.key }}"
+        - "{{ haproxy.certfiles.crt }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Load files in vars
+      ansible.builtin.set_fact:
+        crt: "{{ lookup('file', '{{ role_path }}/files/{{ haproxy.certfiles.crt }}') }}"
+        key: "{{ lookup('file', '{{ role_path }}/files/{{ haproxy.certfiles.key }}') }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create CA for haproxy (web stats)
+      ansible.builtin.template:
+        src: "{{ haproxy.certfiles.ca }}.j2"
+        dest: "{{ role_path }}/files/{{ haproxy.certfiles.ca }}"
+        mode: "0644"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Copy all cert files
+      become: true
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ haproxy.directories.cert }}/"
+        mode: "0644"
+      loop:
+        - "{{ haproxy.certfiles.ca }}"
+        - "{{ haproxy.certfiles.key }}"
+        - "{{ haproxy.certfiles.crt }}"
+  rescue:
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Fail while retrieving and pushing cert file(s) to remote host(s)
+  always:
+    - name: Cleanup to remove sensitive data
+      ansible.builtin.include_role:
+        name: vault
+        tasks_from: cleanUp

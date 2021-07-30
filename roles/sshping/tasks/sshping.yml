@@ -1,0 +1,47 @@
+---
+# tasks file for roles/sshping sshping
+- name: Extract / install / configure sshping package
+  block:
+    - name: Extract packages into directories
+      ansible.builtin.unarchive:
+        src: "{{ item.value.src }}"
+        dest: "{{ item.value.dest }}"
+        remote_src: yes
+      loop: "{{ lookup('dict', sshPing, wantlist=True) }}"
+
+    - name: Compile package sshping
+      community.general.make:
+        chdir: "{{ sshPing.tarFile.dest }}/{{ sshPing.tarFile.version }}"
+
+    - name: Compile man pages for sshping
+      become: true
+      community.general.make:
+        chdir: "{{ sshPing.tarFile.dest }}/{{ sshPing.tarFile.version }}"
+        target: man
+
+    - name: Copy files of sshping to allocated positions
+      become: true
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+        remote_src: yes
+      loop: "{{ filesToCopy }}"
+
+    - name: Compress man page of sshping
+      become: true
+      community.general.archive:
+        path: /usr/share/man/man8/sshping.8
+        dest: /usr/share/man/man8/sshping.8.gz
+  rescue:
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Check error above in logs
+  always:
+    - name: Cleanup to remove tar files
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.value.dest }}/{{ item.value.version }}"
+        state: absent
+      loop: "{{ lookup('dict', sshPing, wantlist=True) }}"
+

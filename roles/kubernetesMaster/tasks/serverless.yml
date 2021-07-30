@@ -1,0 +1,14 @@
+---
+# tasks file for roles/kubernetesMaster serverless
+- name: Create Namespace kubeless
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: namespace
+
+- name: Deploy Serveless kubeless Pod
+  community.kubernetes.k8s:
+    state: present
+    src: "{{ role_path }}/files/kubeless.yml"
+  delegate_to: localhost
+  connection: local
+  no_log: true

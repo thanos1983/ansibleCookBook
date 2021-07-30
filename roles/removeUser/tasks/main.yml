@@ -1,0 +1,8 @@
+---
+# tasks file for removeUser
+- name: Remove user "{{ remove_user }}"
+  become: true
+  user:
+    name: "{{ remove_user }}"
+    state: absent
+    remove: yes

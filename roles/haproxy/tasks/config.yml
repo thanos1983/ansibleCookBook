@@ -1,0 +1,25 @@
+---
+# tasks file for roles/haproxy config
+- name: Gather facts for backend master node(s)
+  register: backEndFacts
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!any"
+      - "network"
+      - "virtual"
+      - "facter"
+  delegate_facts: true
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['kubernetesMasterNodes'] }}"
+
+- name: Copy configuration file to remote host
+  become: true
+  ansible.builtin.template:
+    src: "{{ haproxy.podIngress[ingressOption] }}"
+    dest: "/etc/haproxy/haproxy.cfg"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+    backup: true
+  notify: restart haproxy

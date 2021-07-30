@@ -1,0 +1,11 @@
+---
+# tasks file for roles/kubernetesMaster ingressProxy
+- name: Deploy kubernetes Ingress Pod
+  community.kubernetes.k8s:
+    state: present
+    template: "{{ role_path }}/templates/{{ kubeadm.podIngress[ingressOption] }}"
+  when: kubeadm.podIngress[ingressOption].find('nginx') != -1 or
+        kubeadm.podIngress[ingressOption].find('haProxy') != -1
+  connection: local
+  delegate_to: localhost
+  no_log: true

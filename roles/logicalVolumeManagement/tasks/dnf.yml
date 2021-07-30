@@ -1,0 +1,14 @@
+---
+# tasks file for logicalVolumeManagement dnf
+- name: Create and manage LVM
+  ansible.builtin.include_role:
+    name: logicalVolumeManagementDocker
+    tasks_from: lvm.yml
+
+- name: Prepare podman before mounting points for LV
+  ansible.builtin.include_tasks: podman.yml
+
+- name: Prepare mounting for the lV
+  ansible.builtin.include_role:
+    name: logicalVolumeManagementDocker
+    tasks_from: mount.yml

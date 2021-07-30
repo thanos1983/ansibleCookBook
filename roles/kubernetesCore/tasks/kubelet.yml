@@ -1,0 +1,67 @@
+---
+# tasks file for roles/kubernetesCore kubelet
+- name: Gather facts on listening ports
+  community.general.listen_ports_facts:
+  no_log: true
+
+- name: Create dir /var/lib/kubelet if not exist
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/kubelet
+    state: directory
+    mode: '0700'
+
+- name: Configuring kubelet
+  become: true
+  ansible.builtin.copy:
+    src: "kubelet"
+    dest: "/etc/default/kubelet"
+    mode: "0644"
+  notify: restart kubelet
+
+- name: Check if ports of Kubernetes are occupied
+  become: true
+  block:
+    - name: Expected status is dead if kube is not running
+      ansible.builtin.debug:
+        var: ansible_facts.services['kubelet.service'].state
+      when: ansible_facts.services['kubelet.service'].state is defined
+
+    - name: Check if necessary ports are available
+      ansible.builtin.fail:
+        msg: TCP port {{ item.port }} used by pid {{ item.pid }} check if kubelet service is running. It should be restarting port 10250 (not running).
+      vars:
+        tcp_listen_violations: "{{ ansible_facts.tcp_listen | selectattr('port', 'in', kubernetesTcpPorts) | list }}"
+        kubernetesTcpPorts:
+          - 2379
+          - 2380
+          - 30000
+          - 32767
+          - 10250
+          - 10251
+          - 10252
+          - 64430
+          - 64431
+          - 64432
+          - 64433
+          - 64434
+          - 64435
+          - 64436
+          - 64437
+          - 64438
+          - 64439
+      loop: "{{ tcp_listen_violations }}"
+  rescue:
+    - name: Restart kubelet it should release port 10250
+      ansible.builtin.systemd:
+        name: kubelet
+        enabled: yes
+        state: started
+        masked: no
+        daemon_reload: yes
+        daemon_reexec: yes
+      when: ansible_facts.services['kubelet.service'].state is defined
+
+    - name: Expected status is stopped / dead after restart
+      ansible.builtin.debug:
+        var: ansible_facts.services['kubelet.service'].state

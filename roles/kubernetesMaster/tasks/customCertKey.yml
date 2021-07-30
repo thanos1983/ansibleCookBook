@@ -1,0 +1,24 @@
+---
+# tasks file for roles/kubernetesMaster customCertKey
+- name: Generate custom cert key
+  become: true
+  ansible.builtin.shell:
+    cmd: kubeadm certs certificate-key
+    # cmd: kubeadm alpha certs certificate-key
+  register: certificateCustomkey
+
+- name: Copy cert key for plane nodes to local file
+  ansible.builtin.copy:
+    content: "{{ certificateCustomkey.stdout }}"
+    dest: "{{ role_path }}/files/{{ kubeadm.certCustomKeyFile }}"
+    mode: "0644"
+  connection: local
+  delegate_to: localhost
+
+- name: Load cert key from file
+  # load file although we could use the file from above                                                                                                                                                                                        # the var masterPrimeCertKey is used from multiple points                                                                                                                                                                                    # for the kubeadm-config.yml file
+  ansible.builtin.include_tasks: customCertKeyExtract.yml
+
+- name: Debug key
+  ansible.builtin.debug:
+    var: masterPrimeCertKey

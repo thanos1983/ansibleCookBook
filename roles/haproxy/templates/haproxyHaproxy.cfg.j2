@@ -1,0 +1,131 @@
+#-----------------------------------------------------------------------
+# Global settings
+#-----------------------------------------------------------------------
+global
+	log		/dev/log		local0
+	log             /dev/log		local1	notice
+	log		127.0.0.1:514		local0
+	stats		timeout			30s
+	chroot		/var/lib/haproxy
+	user		{{ user }}
+	group		{{ group }}
+	daemon
+
+	# turn on stats unix socket
+	stats		socket	/var/lib/haproxy/stats	mode	660	level	admin
+
+	# Default SSL material locations
+	ca-base		{{ haproxy.directories.cert }}/
+	crt-base	{{ haproxy.directories.cert }}/
+
+	# Default ciphers to use on SSL-enabled listening sockets.
+	# For more information, see ciphers(1SSL). This list is from:
+	# https://hynek.me/articles/hardening-your-web-servers-ssl-ciphers/
+	# An alternative list with additional directives can be obtained from
+	# https://mozilla.github.io/server-side-tls/ssl-config-generator/?server=haproxy
+	ssl-default-bind-ciphers	ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256
+	ssl-default-bind-options	ssl-min-ver TLSv1.2 no-tls-tickets
+	tune.ssl.default-dh-param	2048
+
+#-----------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#-----------------------------------------------------------------------
+defaults
+	log		global
+	mode		http
+	option		httplog
+	option		dontlognull
+	maxconn		3000
+	timeout         connect	10s
+	timeout         client	30s
+	timeout         server	30s
+	errorfile	400	{{ errorfiles.400 }}
+	errorfile	403	{{ errorfiles.403 }}
+	errorfile	408	{{ errorfiles.408 }}
+	errorfile	500	{{ errorfiles.500 }}
+	errorfile	502	{{ errorfiles.502 }}
+	errorfile	503	{{ errorfiles.503 }}
+	errorfile	504	{{ errorfiles.504 }}
+
+#-----------------------------------------------------------------------
+# frontend for Ingress https encrypted traffic TLS
+#-----------------------------------------------------------------------
+frontend vipLoadBalancerHttps
+	bind		{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:443
+	option		tcplog
+	mode		tcp
+	maxconn		3000
+	default_backend	kubernetesIngressNodePortHttps
+	tcp-request	content	accept	if	{ req.ssl_hello_type 1 }
+
+#-----------------------------------------------------------------------
+# frontend for HAproxy Stats from Ingress Controler
+#-----------------------------------------------------------------------
+frontend vipHAproxyStats
+	bind		{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:1024
+	mode		http
+	maxconn		3000
+	default_backend	HAproxyStats
+
+#-----------------------------------------------------------------------
+# frontend for HA Master Nodes cluster https
+#-----------------------------------------------------------------------
+frontend vipHAControlPlaneNodes
+	bind		{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ kubernetes.controlPlanePort }}
+	option		tcplog
+	mode		tcp
+	maxconn		3000
+	default_backend	HAControlPlaneNodes
+	tcp-request	content	accept	if	{ req.ssl_hello_type 1 }
+
+#-----------------------------------------------------------------------
+# backEnd for Ingress Controler(s) dedicated node(s) dns lookup with tls
+#-----------------------------------------------------------------------
+backend kubernetesIngressNodePortHttps
+	mode		tcp
+	balance		leastconn
+	option		ssl-hello-chk
+	default-server	inter		10s	downinter	5s	rise	2	fall	2	slowstart	60s	maxconn 1500	maxqueue	1600	weight	100
+	server		{{ inventory_hostname_short }}	{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ kubernetes.ingress.nodePort.https }}	check	maxconn	1500
+
+#-----------------------------------------------------------------------
+# backEnd for HAproxy Stats from Ingress Controler
+#-----------------------------------------------------------------------
+backend HAproxyStats
+	mode		http
+	balance		leastconn
+	option		forwardfor
+	default-server	inter		10s	downinter	5s	rise	2	fall	2	slowstart	60s	maxconn	1500	maxqueue	1600	weight	100
+	server		{{ inventory_hostname_short }}	{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ kubernetes.ingress.nodePort.stats }}	check	maxconn	1500
+
+#-----------------------------------------------------------------------
+# backEnd for HA Master nodes cluster with tls
+#-----------------------------------------------------------------------
+backend HAControlPlaneNodes
+	mode		tcp
+	balance		leastconn
+	option		ssl-hello-chk
+	default-server	inter		10s	downinter	5s	rise	2	fall	2	slowstart	60s	maxconn	1500	maxqueue	1600	weight	100
+{% for ind in range(0, (groups['kubernetesMasterNodes'] | length | int)) %}
+	server		{{ backEndFacts.results[ind].ansible_facts.facter_networking.hostname }}		{{ backEndFacts.results[ind].ansible_facts.facter_networking.ip }}:{{ haproxy.port.backEndPort }}	check	maxconn	1500
+{% endfor %}
+	tcp-request	content	accept	if	{ req.ssl_hello_type 1 }
+
+#-----------------------------------------------------------------------
+# backEnd no match
+#-----------------------------------------------------------------------
+backend	noMatch
+	http-request	deny	deny_status	404
+
+#-----------------------------------------------------------------------
+# url to view stats
+#-----------------------------------------------------------------------
+listen stats
+	bind	{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:32700	ssl	crt	{{ haproxy.directories.cert }}/{{ haproxy.certfiles.ca }}	ssl-min-ver	TLSv1.2	no-tls-tickets	ciphers	ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!LOW:!3DES:!MD5:!EXP:!PSK:!SRP:!DSS
+	mode	http
+	stats	enable
+	stats	uri	/stats
+	stats	refresh 10s
+	stats	realm	Haproxy\ Statistics
+	stats	auth	{{ user }}:{{ group }}

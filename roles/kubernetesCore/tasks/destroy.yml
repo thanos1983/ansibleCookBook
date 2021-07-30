@@ -1,0 +1,48 @@
+---
+# tasks file for roles/kubernetesCore destroy
+- name: Populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Debug crio service if is defined
+  ansible.builtin.debug:
+    var: ansible_facts.services['crio.service'].state
+  when: ansible_facts.services['crio.service'].state is defined
+
+- name: Collect user home dir
+  register: user_home_dir
+  ansible.builtin.command: "echo ~{{ user }}"
+
+- name: Debug user home dir
+  ansible.builtin.debug:
+    var: user_home_dir.stdout
+
+- name: Destroy kube
+  become: true
+  block:
+    - name: Copy destroy script to remote host(s)
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop: "{{ kubeScripts }}"
+
+    - name: Destroy Kube on node(s) up to 2m
+      register: destroy_cube
+      ansible.builtin.command: "sh {{ kubeScripts[0].dest }}"
+      no_log: true
+
+    - name: Debug of destroying kube
+      ansible.builtin.debug:
+        var: destroy_cube.stdout_lines
+  always:
+    - name: Remove destroy script
+      ansible.builtin.file:
+        state: absent
+        path: "{{ item.dest }}"
+      loop: "{{ kubeScripts }}"
+  when:
+    - ansible_facts.services["crio.service"] is defined
+    - ansible_facts.services['crio.service'].state == "running"

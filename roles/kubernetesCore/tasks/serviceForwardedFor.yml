@@ -1,0 +1,23 @@
+---
+# tasks file for roles/kubernetesCore serviceForwardedFor
+- name: Create Service in Namespace '{{ service.metadata.namespace }}'
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: "{{ service.metadata.name }}"
+        namespace: "{{ service.metadata.namespace }}"
+        annotations:
+          haproxy.org/forwarded-for: "true"
+      spec: "{{ spec | from_yaml }}"
+  vars:
+    spec: |
+      selector:
+        app: "{{ service.spec.selector.app }}"
+      ports:
+      - name: "{{ service.spec.ports.name }}"
+        port: {{ service.spec.ports.port }}
+        targetPort: {{ service.spec.ports.targetPort }}
+      type: "{{ service.spec.type }}"

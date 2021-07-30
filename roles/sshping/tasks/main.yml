@@ -1,0 +1,22 @@
+---
+# tasks file for roles/sshping
+- name: Install sshPing dependency packages for RH7
+  ansible.builtin.include_tasks: yum.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Install sshPing dependency packages for RH8
+  ansible.builtin.include_tasks: dnf.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: Install sshPing dependency packages for Ubuntu
+  ansible.builtin.include_tasks: apt.yml
+  when:
+    - ansible_distribution == 'Debian' or ansible_distribution == 'Ubuntu'
+    - ansible_distribution_major_version == '18' or ansible_distribution_major_version == '20'
+
+- name: Extract / install / configure sshping package
+  ansible.builtin.include_tasks: sshping.yml

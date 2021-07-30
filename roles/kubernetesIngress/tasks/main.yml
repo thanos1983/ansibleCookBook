@@ -1,0 +1,46 @@
+---
+# tasks file for roles/kubernetesIngress main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Deploy / Create Service(s) and Ingress
+  block:
+    - name: Configure Ingress nodes
+      ansible.builtin.include_tasks: ingressNodesConf.yml
+
+    - name: Create secret for Ingress Dashboard
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: secrets.yml
+
+    - name: Create Ingress NGINX
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressDashboardNginx
+      when: ingressOption == "nginx"
+
+    - name: Create Ingress HaProxy
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressDashboardHaProxy
+      when: ingressOption == "haProxy"
+
+    - name: Validate uri of Dashboard
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: uriContentValidation
+  rescue:
+    - name: Remove Kubernetes Dashoard
+      ansible.builtin.shell:
+        cmd: "kubectl delete ingress ingress-{{ kubeadm.cluster.namespace }} -n {{ kubeadm.cluster.namespace }}"
+
+    - name: Force fail in case of error
+      ansible.builtin.fail:
+        msg: Check logs and try to redeploy
+  delegate_to: localhost
+  connection: local
+  run_once: true

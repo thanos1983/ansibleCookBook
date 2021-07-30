@@ -1,0 +1,11 @@
+---
+# handlers file for roles/dockerPruneCron main
+- name: restart crond
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: crond
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes

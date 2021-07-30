@@ -1,0 +1,30 @@
+---
+# tasks file for roles/haproxy uninstall
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+  no_log: true
+
+- name: Debug HaProxy version if installed
+  ansible.builtin.debug:
+    msg: "{{ ansible_facts.packages['haproxy'] | length }} version of haproxy is installed!"
+  when: "'haproxy' in ansible_facts.packages"
+
+- name: Remove deprecated version
+  become: true
+  ansible.builtin.yum:
+    name: haproxy
+    state: absent
+  when: "'haproxy' in ansible_facts.packages"
+
+- name: Remove configurations / log / symbolic links / binaries
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ haproxy.directories.conf }}"
+    - "/usr/sbin/haproxy"
+    - "/usr/local/sbin/haproxy"
+    - "{{ haproxy.directories.error }}"
+  when: "'haproxy' in ansible_facts.packages"

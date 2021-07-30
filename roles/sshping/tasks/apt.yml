@@ -1,0 +1,7 @@
+---
+# tasks file for roles/sshping apt
+- name: Install sshPing dependency packages for RH7
+  become: true
+  ansible.builtin.apt:
+    name: "{{ debPackages }}"
+    state: latest

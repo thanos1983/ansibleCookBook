@@ -1,0 +1,21 @@
+---
+# vars file for logicalVolumeManagementDocker
+directories:
+  - { path: '/logs', state: 'directory', owner: '{{ user }}', group: '{{ user }}', mode: '0755' }
+  - { path: '/data01', state: 'directory', owner: '{{ user }}', group: '{{ user }}', mode: '0755' }
+  - { path: '{{ storage.docker.graphroot }}', state: 'directory', owner: 'root', group: 'root', mode: '0755' }
+
+logical_volumes:
+  - { vg: 'appvg', lv: 'logs', size: '50g', force: 'yes' }
+  - { vg: 'appvg', lv: 'data01', size: '49g', force: 'yes' }
+  - { vg: 'appvg', lv: 'docker_overlay2', size: '100g', force: 'yes' }
+
+filesystemOpt:
+  - { fstype: 'xfs', dev: '/dev/{{ logical_volumes[0].vg }}/{{ logical_volumes[0].lv }}', opts: '-n ftype=1' }
+  - { fstype: 'xfs', dev: '/dev/{{ logical_volumes[1].vg }}/{{ logical_volumes[1].lv }}', opts: '-n ftype=1' }
+  - { fstype: 'xfs', dev: '/dev/{{ logical_volumes[2].vg }}/{{ logical_volumes[2].lv }}', opts: '-n ftype=1' }
+
+lvMount:
+  - { src: '/dev/{{ logical_volumes[0].vg }}/{{ logical_volumes[0].lv }}', path: '/{{ logical_volumes[0].lv }}', opts: 'defaults', state: 'mounted', fstype: 'xfs' }
+  - { src: '/dev/{{ logical_volumes[1].vg }}/{{ logical_volumes[1].lv }}', path: '/{{ logical_volumes[1].lv }}', opts: 'defaults', state: 'mounted', fstype: 'xfs' }
+  - { src: '/dev/{{ logical_volumes[2].vg }}/{{ logical_volumes[2].lv }}', path: '{{ storage.docker.graphroot }}', opts: 'defaults', state: 'mounted', fstype: 'xfs' }

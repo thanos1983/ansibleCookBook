@@ -1,0 +1,47 @@
+---
+# vars file for roles/kubernetesRbac
+kubeadm:
+  cluster:
+    user: '{{ kubernetes.rbac.user }}'
+    roleName: 'role-{{ kubernetes.rbac.user }}'
+    roleBindingName: 'rolebinding-{{ kubernetes.rbac.user }}'
+    namespace: 'namespace-{{ kubernetes.rbac.user }}'
+  certfiles:
+    crt: '/etc/kubernetes/pki/ca.crt'
+    key: '/etc/kubernetes/pki/ca.key'
+
+rbac:
+  dir: '/tmp/rbac-{{ kubernetes.rbac.user }}'
+  serviceAccount:
+    name: '{{ kubeadm.cluster.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+  role:
+    metadata:
+      name: '{{ kubeadm.cluster.roleName }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+  roleBinding:
+    metadata:
+      name: '{{ kubeadm.cluster.roleBindingName }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+    roleRef:
+      kind: 'Role' # Role or ClusterRole
+      name: '{{ kubeadm.cluster.roleName }}' # Name of the Role or ClusterRole to bind to.
+    subjects:
+      kind: 'User' # User or ServiceAccount
+      name: '{{ kubeadm.cluster.user }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+  clusterRoleBinding:
+    metadata:
+      name: '{{ kubernetes.rbac.user }}'
+    roleRef:
+      kind: 'ClusterRole' # Role or ClusterRole
+      name: '{{ kubernetes.rbac.user }}-rbacRole' # Name of the Role or ClusterRole to bind to
+    subjects:
+      kind: 'ServiceAccount' # User or ServiceAccount
+      name: '{{ kubernetes.rbac.user }}'
+      namespace: '{{ kubeadm.cluster.namespace }}'
+
+cleanup:
+  - '{{ rbac.dir }}/ca.key'
+  - '{{ rbac.dir }}/{{ kubernetes.rbac.user }}.csr'
+  - '{{ rbac.dir }}/{{ kubernetes.rbac.user }}.key.pub'

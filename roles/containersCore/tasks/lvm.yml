@@ -1,0 +1,39 @@
+---
+# tasks file for containersCore lvm
+- name: List all available Volume Groups
+  register: volume_group
+  become: true
+  ansible.builtin.shell:
+    cmd: vgs
+  no_log: true
+
+- name: Debug Volume Group
+  ansible.builtin.debug:
+    var: volume_group.stdout_lines
+
+- name: Create Logical Volume Groups
+  become: true
+  community.general.lvol:
+    vg: "{{ item.vg }}"
+    lv: "{{ item.lv }}"
+    size: "{{ item.size }}"
+    force: "{{ item.force }}"
+  loop: "{{ logical_volumes }}"
+
+- name: Make filesystem for LV
+  become: true
+  community.general.filesystem:
+    fstype: "{{ item.fstype }}"
+    dev: "{{ item.dev }}"
+    opts: "{{ item.opts }}"
+  loop: "{{ filesystemOpt }}"
+
+- name: Verify that the file systems is as expected
+  register: file_system
+  ansible.builtin.shell:
+    cmd: lsblk -f
+  no_log: true
+
+- name: Debug file system
+  ansible.builtin.debug:
+    var: file_system.stdout_lines

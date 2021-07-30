@@ -1,0 +1,17 @@
+---
+# tasks file for roles/webSocket main
+- name: Get CA certificates from Vault for cockpit
+  ansible.builtin.include_role:
+    name: vault
+
+- name: Deploy the CA retrieved from previous step
+  ansible.builtin.include_tasks: webSocket.yml
+
+- name: Create cockpit.conf for cross domain limitations
+  ansible.builtin.include_tasks: webSocketProxy.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: Reload services (NetworkManager / Cockpit.Socket) to load the configurations
+  ansible.builtin.include_tasks: systemd.yml

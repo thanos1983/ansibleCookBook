@@ -1,0 +1,12 @@
+---
+# tasks file for roles/minio
+- name: Get CA certificates from Vault
+  ansible.builtin.include_role:
+    name: vault
+    tasks_from: vault
+
+- name: Prerequicites for certs
+  ansible.builtin.include_tasks: dirs.yml
+
+- name: Docker Deployment
+  ansible.builtin.include_tasks: minioDeploy.yml

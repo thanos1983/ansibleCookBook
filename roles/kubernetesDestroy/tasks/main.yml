@@ -1,0 +1,47 @@
+---
+# tasks file for roles/kubernetesDestroy main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Remove node(s) from cluster if changing character (Worker <-> Master)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: drain
+  vars:
+    assignPrimeMaster: false
+
+- name: Destroy kube on node(s) in case the node was deployed previously up to 2m
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: destroy
+
+- name: Kill kube-apiserver bug in 1.19.4v
+  ansible.builtin.include_role:
+    name: kubernetesMaster
+    tasks_from: kube_processes
+
+- name: Gather the package facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: restart haproxy
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: haproxy
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes
+  when: "'haproxy' in services"
+
+- name: Remove master node(s) from etcd cluster if registered
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: etcd
+  vars:
+    assignPrimeMaster: false

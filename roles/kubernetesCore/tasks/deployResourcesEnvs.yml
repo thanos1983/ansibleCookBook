@@ -1,0 +1,45 @@
+---
+# tasks file for roles/kubernetesCore deployResourcesEnvs
+- name: Launch deployment replica(s) with resources and environment variables
+  community.kubernetes.k8s:
+    state: present
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+        labels:
+          app: "{{ deployment.metadata.labels.app }}"
+      spec: "{{ spec | from_yaml }}"
+  vars:
+    spec: |
+        replicas: {{ deployment.spec.replicas }}
+        selector:
+          matchLabels:
+            app: "{{ deployment.spec.selector.matchLabels.app }}"
+        template:
+          metadata:
+            labels:
+              app: "{{ deployment.spec.template.metadata.labels.app }}"
+          spec:
+            containers:
+            - name: "{{ deployment.spec.template.spec.containers.name }}"
+              image: "{{ deployment.spec.template.spec.containers.image }}"
+              imagePullPolicy: "{{ deployment.spec.template.spec.containers.imagePullPolicy }}"
+              resources:
+                requests:
+                  memory: "{{ deployment.spec.template.spec.containers.resources.requests.memory }}"
+                  cpu: "{{ deployment.spec.template.spec.containers.resources.requests.cpu }}"
+                limits:
+                  memory: "{{ deployment.spec.template.spec.containers.resources.limits.memory }}"
+                  cpu: "{{ deployment.spec.template.spec.containers.resources.limits.cpu }}"
+              ports:
+              - containerPort: {{ deployment.spec.template.spec.containers.ports.containerPort }}
+              env:
+              - name: "{{ deployment.spec.template.spec.containers.env.name1 }}"
+                value: "{{ deployment.spec.template.spec.containers.env.value1 }}"
+              - name: "{{ deployment.spec.template.spec.containers.env.name2 }}"
+                value: "{{ deployment.spec.template.spec.containers.env.value2 }}"
+  connection: local
+  delegate_to: localhost

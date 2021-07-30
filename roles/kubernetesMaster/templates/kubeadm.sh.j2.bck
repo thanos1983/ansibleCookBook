@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# set -x
+# set -e
+
+kubeadm init \
+	--upload-certs \
+	--cri-socket {{ kubernetes.socket.crio }} \
+	--node-name={{ ansible_hostname }}.{{ ansible_facts.dns.domain }} \
+	--cert-dir={{ kubeadm.kubernetesCertDir }} \
+	--image-repository={{ kubernetes.imagesRepo.registry }} \
+	--kubernetes-version=v{{ kubernetes.kubeVersion }} \
+	--pod-network-cidr={{ kubeadm.podNetworkCidr.calico }} \
+	--apiserver-cert-extra-sans={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} \
+	--apiserver-advertise-address={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }} \
+	--control-plane-endpoint={{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:{{ kubernetes.controlPlanePort }}

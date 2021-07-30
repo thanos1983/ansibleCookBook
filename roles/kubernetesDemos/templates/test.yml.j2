@@ -1,0 +1,37 @@
+apiVersion: kubeless.io/v1beta1
+kind: Function
+metadata:
+  name: {{ fass.metadata.name }}
+  namespace: {{ fass.metadata.namespace }} 
+  label:
+    function: {{ fass.metadata.label.function }}
+spec:
+  runtime: {{ fass.spec.runtime }}
+  timeout: "{{ fass.spec.timeout }}"
+  handler: {{ fass.spec.handler }}
+  deps: ""
+  horizontalPodAutoscaler:
+    apiVersion: autoscaling/v2beta1
+    kind: HorizontalPodAutoscaler
+    metadata:
+      name: {{ fass.spec.horizontalPodAutoscaler.metadata.name }}
+      namespace: {{ fass.spec.horizontalPodAutoscaler.metadata.namespace }}
+    spec:
+      maxReplicas: {{ fass.spec.horizontalPodAutoscaler.spec.maxReplicas }}
+      metrics:
+      - resource:
+          name: {{ fass.spec.horizontalPodAutoscaler.spec.metrics.resource.name }}
+          targetAverageUtilization: {{ fass.spec.horizontalPodAutoscaler.spec.metrics.resource.targetAverageUtilization }}
+        type: Resource
+      minReplicas: {{ fass.spec.horizontalPodAutoscaler.spec.minReplicas }}
+      scaleTargetRef:
+        apiVersion: apps/v1beta1
+        kind: {{ fass.spec.horizontalPodAutoscaler.spec.scaleTargetRef.kind }}
+        name: {{ fass.spec.horizontalPodAutoscaler.spec.scaleTargetRef.name }}
+  function-content-type: {{ fass.spec.function_content_type }}
+  function: |
+    import os
+
+    def foo(event, context):
+        name = os.environ.get("name", "Stranger")
+        return "Hello %s\n" % name

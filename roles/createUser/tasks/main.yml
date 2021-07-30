@@ -1,0 +1,13 @@
+---
+# tasks file for roles/createUser main
+- name: Create Group "{{ group }"
+  ansible.builtin.include_tasks: createGroup.yml
+
+- name: Create User "{{ user }}"
+  ansible.builtin.include_tasks: addUser.yml
+
+- name: Rootless Processes
+  ansible.builtin.include_tasks: rootless.yml
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'

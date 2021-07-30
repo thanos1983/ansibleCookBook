@@ -1,0 +1,50 @@
+---
+# tasks file for roles/kubernetesMaster kube_processes
+- name: Collect kube_apiserve pid if running
+  become: true
+  ansible.builtin.shell:
+    cmd: "netstat -ltnp | grep 6443 | awk '{print $7}' | awk -F/ '{print $1}'"
+  register: kube_apiserve_pid
+
+- name: Printing the process ID of kube_apiserve
+  ansible.builtin.debug:
+    msg: "PID of kube_apiserve: {{ kube_apiserve_pid.stdout_lines }}"
+  when: kube_apiserve_pid.stdout_lines | length > 0
+
+- name: Kill kubectl process if running
+  become: true
+  ansible.builtin.shell:
+    cmd: "kill -9 {{ item }}"
+  loop: "{{ kube_apiserve_pid.stdout_lines }}"
+  when: kube_apiserve_pid.stdout_lines | length > 0
+
+- name: Collect kube processe(s) if running
+  community.general.pids:
+    name: "{{ item }}"
+  register: pids_of_kube
+  loop: "{{ kubeadm.processesToKill.values() | flatten  }}"
+
+- name: debug
+  ansible.builtin.debug:
+    msg: "Found running process:
+            '{{ pids_of_kube.results[item | int].invocation.module_args.name }}'
+            with pid '{{ pids_of_kube.results[item | int].pids[0] }}'"
+  when: pids_of_kube.results[item | int].pids | length > 0
+  with_sequence: start=0 end={{ pids_of_kube.results | length -1 | int }}
+
+- name: Kill kube proces(s) if running
+  become: true
+  ansible.builtin.shell:
+    cmd: "kill -9 {{ pids_of_kube.results[item | int].pids[0] }}"
+  when: pids_of_kube.results[item | int].pids | length > 0
+  with_sequence: start=0 end={{ pids_of_kube.results | length -1 | int }}
+
+- name: Restart kubelet to release ports in case of previous deployment
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: kubelet
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes

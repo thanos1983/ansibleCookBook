@@ -1,0 +1,95 @@
+---
+# tasks file for roles/prometheusServer deployment
+- name: populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Verify docker dameon is running
+  block:
+    - name: Debug Docker socket status
+      ansible.builtin.debug:
+        var: ansible_facts.services['docker.service'].state
+      when: ansible_facts.services['docker.service'].state is defined
+
+    - name: Fail when docker daemon is not running
+      ansible.builtin.fail:
+        msg: "docker.service is {{ ansible_facts.services['docker.service'].state }}"
+      when:
+        - ansible_facts.services['docker.service'].state is defined
+        - ansible_facts.services["docker.service"].state != "running"
+
+    - name: Stop Prometheus Server Container
+      community.docker.docker_container:
+        name: "{{ prom_repo.name }}"
+        state: absent
+        container_default_behavior: compatibility
+      when:
+        - ansible_facts.services['docker.service'].state is defined
+        - ansible_facts.services['docker.service'].state == "running"
+  always:
+    - name: Prune everything (including non-dangling images)
+      community.general.docker_prune:
+        timeout: 120
+        containers: yes
+        images: yes
+        images_filters:
+          dangling: false
+        networks: yes
+        volumes: yes
+        builder_cache: yes
+      ignore_errors: yes
+      when:
+        - ansible_facts.services['docker.service'].state is defined
+        - ansible_facts.services['docker.service'].state == "running"
+
+- name: Log into Artifactory with "{{ docker_username }}" user
+  community.docker.docker_login:
+    registry: "{{ prom_repo.registry }}"
+    username: "{{ docker_username }}"
+    password: "{{ docker_password }}"
+  run_once: true
+
+- name: Debug Image to be deployed
+  ansible.builtin.debug:
+    msg: "{{ prom_repo.repo }}:{{ prom_repo.version }}"
+  run_once: true
+
+- name: Run Prometheus Server Container
+  register: docker
+  community.docker.docker_container:
+    pull: true
+    name: "{{ prom_repo.name }}"
+    container_default_behavior: compatibility
+    image: "{{ prom_repo.repo }}:{{ prom_repo.version }}"
+    volumes:
+      - "{{ prometheus.conf.dirs.data }}:/prometheus:rw"
+    published_ports: "{{ portBinds }}"
+    restart_policy: unless-stopped
+    command: [ "--config.file=/prometheus/conf/{{ prometheus.conf.files.glob }}",
+               "--storage.tsdb.path=/prometheus",
+               "--web.console.libraries=/usr/share/prometheus/console_libraries",
+               "--web.console.templates=/usr/share/prometheus/consoles",
+               "--web.config.file=/prometheus/conf/{{ prometheus.conf.files.web }}",
+               "--web.external-url={{ prometheus_external_url }}",
+               "--web.route-prefix='/'" ]
+
+- name: Log out from Artifactory
+  community.docker.docker_login:
+    registry: "{{ prom_repo.registry }}"
+    state: absent
+  run_once: true
+
+- name: Debug Data for Prometheus Server Container
+  ansible.builtin.debug:
+    var: docker.container.NetworkSettings
+  when: docker.container is defined
+
+- name: Check Ports are Accessible from "{{ inventory_hostname }}" to "{{ prom_repo.name }}"
+  ansible.builtin.wait_for:
+    host: "{{ inventory_hostname }}"
+    port: "{{ item }}"
+    state: started
+    delay: 0
+    timeout: 3
+  loop: "{{ portsToCheck }}"
+  when: docker.container is defined

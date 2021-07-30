@@ -1,0 +1,8 @@
+---
+# vars file for roles/kubernetesWorker
+kubeadm:
+  kubernetesCertDir: '/etc/kubernetes/pki'
+  certfiles:
+    ca: 'ca.cert'
+    key: 'my.cert.key'
+    cert: 'my.cert.crt'

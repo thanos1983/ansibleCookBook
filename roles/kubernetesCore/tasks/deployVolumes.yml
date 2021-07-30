@@ -1,0 +1,44 @@
+---
+# tasks file for roles/kubernetesCore deployVolumes
+- name: Pod deployment in Namespace '{{ deployment.metadata.namespace }}'
+  community.kubernetes.k8s:
+    state: "{{ deploymentState | default('present') }}"
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: "{{ deployment.metadata.name }}"
+        namespace: "{{ deployment.metadata.namespace }}"
+        labels:
+          app: "{{ deployment.metadata.labels.app }}"
+          app.kubernetes.io/name: "{{ deployment.metadata.labels.name }}"
+          app.kubernetes.io/instance: "{{ deployment.metadata.labels.instance }}"
+          app.kubernetes.io/version: "{{ deployment.metadata.labels.version }}"
+          app.kubernetes.io/component: "{{ deployment.metadata.labels.component }}"
+          app.kubernetes.io/managed-by: "{{ deployment.metadata.labels.managed_by }}"
+      spec: "{{ spec | from_yaml }}"
+  vars:
+    spec: |
+        replicas: {{ deployment.spec.replicas }}
+        selector:
+          matchLabels:
+            app: "{{ deployment.spec.selector.matchLabels.app }}"
+        template:
+          metadata:
+            labels:
+              app: "{{ deployment.spec.template.metadata.labels.app }}"
+          spec:
+            containers:
+            - name: "{{ deployment.spec.template.spec.containers.name }}"
+              image: "{{ deployment.spec.template.spec.containers.image }}"
+              ports:
+              - containerPort: {{ deployment.spec.template.spec.containers.ports.containerPort }}
+              volumeMounts:
+              - name: "{{ deployment.spec.template.spec.containers.volumeMounts.name }}"
+                mountPath: "{{ deployment.spec.template.spec.containers.volumeMounts.mountPath }}"
+            volumes:
+            - name: "{{ deployment.spec.template.spec.volumes.name }}"
+              configMap:
+                name: "{{ deployment.spec.template.spec.volumes.configMap.name }}"
+  connection: local
+  delegate_to: localhost

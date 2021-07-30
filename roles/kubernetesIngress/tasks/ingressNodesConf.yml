@@ -1,0 +1,54 @@
+---
+# tasks file for roles/kubernetesIngress ingressNodesConf
+- name: Get the number of nodes dedicated for Ingress
+  ansible.builtin.set_fact:
+    totalIngressNodes: "{{ groups['kubernetesIngressNodes'] | length }}"
+
+- name: Debug total number of Ingress nodes
+  ansible.builtin.debug:
+    var: totalIngressNodes
+
+- name: Adjust the number of replicas for NGINX Ingress controller nodes
+  ansible.builtin.shell:
+    cmd: |
+          kubectl -n ingress-nginx scale --replicas=0 deployment deployment/ingress-nginx-controller
+          kubectl -n ingress-nginx scale --replicas={{ totalIngressNodes }} deployment/ingress-nginx-controller
+  when: ingressOption == "nginx"
+
+- name: Label specific nodes for dedicated ingress controller nodes
+  ansible.builtin.shell:
+    cmd: |
+          kubectl label nodes {{ item }}.{{ ansible_facts.dns.domain }} node-role.kubernetes.io/worker-
+          kubectl label nodes {{ item }}.{{ ansible_facts.dns.domain }} node-role.kubernetes.io/ingress="true"
+          kubectl taint nodes {{ item }}.{{ ansible_facts.dns.domain }} dedicated=ingress-controller:NoSchedule
+  loop: "{{ groups['kubernetesIngressNodes'] }}"
+
+- name: Check labels on nodes
+  ansible.builtin.shell:
+    cmd: kubectl get nodes --show-labels
+  register: labels
+  no_log: true
+
+- name: Debug labels on nodes
+  ansible.builtin.debug:
+    var: labels.stdout_lines
+
+- name: Wait until Ingress NGINX Controller is Running
+  community.kubernetes.k8s_info:
+    kind: Pod
+    wait: yes
+    name: ingress-nginx
+    namespace: ingress-nginx
+    wait_sleep: 5
+    wait_timeout: 30
+  when: ingressOption == "nginx"
+
+- name: Wait until Ingress HaProxy Controller is Running
+  community.kubernetes.k8s_info:
+    kind: Pod
+    wait: yes
+    name: haproxy-controller
+    namespace: haproxy-controller
+    wait_sleep: 5
+    wait_timeout: 30
+  when: ingressOption == "haProxy"

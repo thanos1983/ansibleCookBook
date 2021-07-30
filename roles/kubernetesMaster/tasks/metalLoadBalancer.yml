@@ -1,0 +1,47 @@
+---
+# tasks file for roles/kubernetesMaster metalLoadBalancer
+- name: Copy and deploy metallb Pod
+  block:
+    - name: Create namespace for metallb
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: metallb-system
+            labels:
+              app: metallb
+
+    - name: Launch metallb pod and ingreess
+      community.kubernetes.k8s:
+        state: present
+        src: "{{ role_path }}/files/{{ item }}"
+      loop:
+        - "{{ kubeadm.podIngress[ingressOption] }}"
+        - "{{ kubeadm.metallb.file }}"
+      no_log: true
+
+    - name: Create metallb secret
+      ansible.builtin.shell:
+        cmd: "kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey='$(openssl rand -base64 128)'"
+
+    - name: Assinging Layer2 metallb configurations IP range
+      community.kubernetes.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            namespace: metallb-system
+            name: config
+          data:
+            config: |
+              address-pools:
+              - name: default
+                protocol: layer2
+                addresses:
+                - "{{ kubeadm.metallb.ipLayer2Range }}"
+  when: kubeadm.podIngress[ingressOption].find('metalLB') != -1
+  connection: local
+  delegate_to: localhost

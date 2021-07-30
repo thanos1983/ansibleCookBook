@@ -1,0 +1,12 @@
+---
+# tasks file for roles/kubernetesCore namespace
+- name: k8s namespace create / remove
+  community.kubernetes.k8s:
+    state: "{{ namespaceState | default('present') }}"
+    definition:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: "{{ kubeadm.cluster.namespace }}"
+  delegate_to: localhost
+  connection: local

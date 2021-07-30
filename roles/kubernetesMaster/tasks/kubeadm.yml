@@ -1,0 +1,65 @@
+---
+# tasks file for roles/kubernetesMaster kubeadm
+- name: Gather facts for backend load balancer(s)
+  register: loadBalancerFacts
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!any"
+      - "network"
+      - "virtual"
+      - "facter"
+  delegate_facts: true
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['kubernetesLoadBalancer'] }}"
+
+- name: Launch kube
+  become: true
+  block:
+    - name: Copy kubeadm script(s) to remote host
+      ansible.builtin.template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ item.owner }}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop: "{{ kubeadmFiles.values() | flatten  }}"
+
+    - name: Create kube with '{{ kubeadm.podNetworkCidr[networkingOption] }}' netmask on node '{{ ansible_hostname }}' up to 4m
+      register: kube
+      ansible.builtin.command: "sh {{ kubeadmFiles.kubeadmScript.dest }}"
+      no_log: true
+
+    - name: Validate that the master node is listening on port '{{ kubernetes.controlPlanePort }}'
+      ansible.builtin.wait_for:
+        host: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        port: "{{ kubernetes.controlPlanePort }}"
+        state: started
+        delay: 0
+        timeout: 3
+  rescue:
+    - name: Destroy kube in case of error on node "{{ ansible_hostname }}" up to 2m
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: destroy
+
+    - name: Kill kube_apiserve process if running
+      ansible.builtin.include_tasks: kube_processes.yml
+
+    - name: Debug kubeadm to get an overview of error
+      ansible.builtin.debug:
+        var: kube
+
+    - name: Force fail in case of error
+      ansible.builtin.fail:
+        msg: If error was kubelet, we have restarted try to redeploy
+  always:
+    - name: Remove kubeadm file(s)
+      ansible.builtin.file:
+        state: absent
+        path: "{{ item.dest }}"
+      loop: "{{ kubeadmFiles.values() | flatten  }}"
+
+- name: Debug kubeadm output
+  ansible.builtin.debug:
+    var: kube.stdout_lines

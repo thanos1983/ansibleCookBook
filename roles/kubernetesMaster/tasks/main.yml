@@ -1,0 +1,125 @@
+---
+# tasks file for roles/kubernetesMaster main
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: Remove node '{{ ansible_hostname }}' from cluster if changing character (Worker <-> Master)
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: drain
+  vars:
+    assignPrimeMaster: true
+
+- name: Destroy Kube on node '{{ ansible_hostname }}' in case the node was deployed previously up to 2m
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: destroy
+
+- name: Kill kube processes if running
+  ansible.builtin.include_tasks: kube_processes.yml
+
+- name: Get CA certificates from Vault for kubernetes
+  ansible.builtin.include_role:
+    name: vault
+  tags: [ never ]
+
+- name: Copy CA to remote node
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubernetesCA
+  tags: [ never ]
+
+- name: Generate Custom Certificate key
+  ansible.builtin.include_tasks: customCertKey.yml
+
+- name: Login to Artifactory
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: dockerLogin
+
+- name: Prepare cni networking
+  ansible.builtin.include_tasks: cni.yml
+
+- name: kubeadm processes for master
+  ansible.builtin.include_tasks: kubeadm.yml
+
+- name: Copy Kubeconfig for Admin on local PC
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubeconfigAdmin
+  vars:
+    configFile: admin.conf
+
+- name: kubeconfig for non admin user
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubeconfig
+  vars:
+    configFile: admin.conf
+
+- name: Kubelet permissions
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubeletPermissions
+
+- name: Kubectl Autocompletion
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: kubectlAutocompletion
+
+- name: kube pod network
+  ansible.builtin.include_tasks: networkPod.yml
+
+- name: Kubernetes Ingress
+  ansible.builtin.include_tasks: ingressProxy.yml
+
+- name: Kubernetes MetalLb
+  ansible.builtin.include_tasks: metalLoadBalancer.yml
+
+- name: kubernetes Dashboard
+  ansible.builtin.include_tasks: uiPod.yml
+
+- name: kubernetes Create ClusterRoleUser
+  ansible.builtin.include_tasks: createClusterRoleUser.yml
+
+- name: Retrieve Token for UI
+  ansible.builtin.include_tasks: uiToken.yml
+
+- name: Add metrics pod to the node
+  ansible.builtin.include_tasks: metrics.yml
+
+- name: Add metrics CRI-O pod to the node
+  ansible.builtin.include_tasks: metricsCrio.yml
+
+- name: Add kubectl-whoami script
+  ansible.builtin.include_tasks: kubectlWhoami.yml
+
+- name: Launch Kubeless
+  ansible.builtin.include_tasks: serverless.yml
+
+- name: Remove Master Label from Node
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: removeLabelNodes
+  vars:
+    nodeHostName: "{{ ansible_hostname }}"
+    nodeLabel: "master"
+
+- name: Logout to Artifactory
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: dockerLogOut
+
+- name: Check status of cluster
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: status
+
+- name: List Pods
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: pods

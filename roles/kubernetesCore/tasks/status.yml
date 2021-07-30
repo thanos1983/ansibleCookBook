@@ -1,0 +1,15 @@
+---
+# tasks file for roles/kubernetesCore status
+- name: Get list of all nodes in the cluster
+  ansible.builtin.shell:
+    cmd: kubectl get nodes
+  register: nodes
+  connection: local
+  delegate_to: localhost
+  ignore_errors: true
+  no_log: true
+
+- name: Debug node(s) list
+  ansible.builtin.debug:
+    var: nodes.stdout_lines
+  when: nodes.rc == 0

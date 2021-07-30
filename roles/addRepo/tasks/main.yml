@@ -1,0 +1,48 @@
+---
+# tasks file for addRepo
+- name: Add repositories for RH7
+  become: true
+  register: repo
+  yum_repository:
+    file: "{{ item.file }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description }}"
+    enabled: "{{ item.enabled }}"
+    gpgcheck: "{{ item.gpgcheck }}"
+    baseurl: "{{ item.baseurl }}"
+  loop: "{{ repos.values() | flatten }}"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: yum clean metadata
+  ansible.builtin.command: yum clean all
+  args:
+    warn: false
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+    - repo.changed == true
+
+- name: Add repositories for RH8
+  become: true
+  register: repo
+  yum_repository:
+    file: "{{ repos.frt.file }}"
+    name: "{{ repos.frt.name }}"
+    description: "{{ repos.frt.description }}"
+    enabled: "{{ repos.frt.enabled }}"
+    gpgcheck: "{{ repos.frt.gpgcheck }}"
+    baseurl: "{{ repos.frt.baseurl }}"
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: dnf clean metadata
+  ansible.builtin.command: dnf clean all
+  args:
+    warn: false
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+    - repo.changed == true

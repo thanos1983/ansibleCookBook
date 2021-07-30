@@ -1,0 +1,69 @@
+---
+uid: 9999
+gid: 9999
+old_uid: 1001
+
+user: 'sampleUser'
+group: 'sampleGroup'
+password: 'samplePassword'
+remove_user: 'old-user'
+docker_username: 'sampleDocker'
+docker_password: 'sampleDocker'
+
+url: 'https://my-vault.my.private.domain.com'
+prometheus_external_url: 'https://my-prometheus.my.private.domain.com'
+# ansible_python_interpreter: '/usr/bin/python'
+ingressOption: 'haProxy'
+# ingressOption: 'traefik'
+
+pip_index_url: 'https://my.proxy.com/api/pypi/pypi-remote/simple'
+
+kubernetes:
+  packages:
+    - kubelet
+    - kubeadm
+    - kubectl
+  master: 'admin.conf'
+  worker: 'kubelet.conf'
+  cgroup_driver: 'systemd'
+  controlPlanePort: '6443'
+  kubeVersion: '1.20.6'
+  rbac:
+    user: 'activeui' # low case
+  imagesRepo:
+    registry: 'my.private.registry'
+    username: 'sampleDocker'
+    password: 'sampleDocker'
+  ingress:
+    nodePort:
+      https: '30443'
+      stats: '31024'
+  socket:
+    docker: '/var/run/dockershim.sock'
+    crio: 'unix:///var/run/crio/crio.sock'
+  crio:
+    metricsPort: '5555'
+    storage_driver: 'overlay'
+    user: '/home/{{ ansible_user_id }}/.config/containers'
+    cert:
+      dir: '/etc/crio/certs'
+      files:
+        ca: 'ca.cert'
+        key: 'ca.key'
+        crt: 'ca.crt'
+
+storage:
+  podman:
+    runroot: '/run/user/{{ uid }}'
+    graphroot: '/var/lib/podman/'
+  docker:
+    graphroot: '/var/lib/docker/'
+  crio:
+    root: '/var/lib/containers/storage'
+    runroot: '/var/run/containers/storage'
+    graphroot: '/var/lib/containers/storage'
+
+consulServer:
+  node1: 'consulMaster1'
+  node2: 'consulMaster2'
+  node3: 'consulMaster3'

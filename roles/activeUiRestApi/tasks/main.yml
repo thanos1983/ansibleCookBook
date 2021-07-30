@@ -1,0 +1,39 @@
+---
+# tasks file for roles/activeUiRestApi
+- name: Block of ActiveUI Rest Api deployment
+  block:
+    - name: Create Role for the Rest Api Server
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: roleRestApiActiveUi
+
+    - name: Create ServiceAccount for the Rest Api Server
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: serviceAccount
+
+    - name: Create RoleBind for the Rest Api Server
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: roleBinding
+
+    - name: Deployment ActiveUI Rest Api Server
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: deployResourcesServiceAccount
+
+    - name: Create Service
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: service
+
+    - name: Create Ingress HaProxy
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressHaProxyFlat
+
+    - name: Validate that the REST Api is listening
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: uriGetValidation
+  run_once: true

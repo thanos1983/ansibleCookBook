@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesCore removeLabelNodes
+- name: Label Node(s)
+  ansible.builtin.shell:
+    cmd: "kubectl label nodes {{ nodeHostName }}.{{ ansible_facts.dns.domain }} node-role.kubernetes.io/{{ nodeLabel }}-"
+  connection: local
+  delegate_to: localhost

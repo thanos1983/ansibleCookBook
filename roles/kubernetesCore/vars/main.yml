@@ -1,0 +1,46 @@
+---
+# vars file for roles/kubernetesCore main
+kubernetes_repo: 'kubernetes'
+
+removeNode:
+  drain: 'kubectl drain {{ ansible_hostname }}.{{ ansible_facts.dns.domain }} --delete-local-data --force --ignore-daemonsets'
+  delete: 'kubectl delete node {{ ansible_hostname }}.{{ ansible_facts.dns.domain }}'
+
+modprobeModules:
+  - overlay
+  - br_netfilter
+  - nf_conntrack
+
+serverless:
+  kubelet:
+    src: 'https://my.private.docker.domain/zip/kubeless_linux-amd64.zip'
+    dest: '/tmp'
+    version: 'v1.0.8'
+
+blackList:
+  dirs:
+    - '/etc/modprobe.d/'
+
+containerNetwork:
+  cni:
+    src: 'https://my.private.docker.domain/zip/cni-plugins-linux-amd64-v0.9.1.tgz'
+    dest: '/opt/cni/bin'
+  dirs:
+    - '/etc/cni/net.d'
+    - '/opt/cni/bin'
+
+sysctlK8s:
+  conf:
+    - { name: 'net.ipv4.ip_forward', value: '1', file: '/etc/sysctl.conf' }
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1', file: '/etc/sysctl.conf' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1', file: '/etc/sysctl.conf' }
+  k8s:
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1', file: '/etc/sysctl.d/k8s.conf' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1', file: '/etc/sysctl.d/k8s.conf' }
+  crio:
+    - { name: 'net.ipv4.ip_forward', value: '1', file: '/etc/sysctl.d/99-kubernetes-cri.conf' }
+    - { name: 'net.bridge.bridge-nf-call-iptables', value: '1', file: '/etc/sysctl.d/99-kubernetes-cri.conf' }
+    - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1', file: '/etc/sysctl.d/99-kubernetes-cri.conf' }
+
+kubeScripts:
+  - { src: 'destroy.sh.j2', dest: '/tmp/destroy.sh', owner: 'root', group: 'root', mode: '0755'  }

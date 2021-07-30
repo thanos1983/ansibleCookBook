@@ -1,0 +1,8 @@
+---
+# tasks file for roles/createUser createGroup 
+- name: Ensure group "{{ group }}" exists with correct gid "{{ gid }}"
+  become: true
+  ansible.builtin.group:
+    name: "{{ group }}"
+    state: present
+    gid: "{{ gid }}"

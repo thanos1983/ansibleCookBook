@@ -1,0 +1,33 @@
+---
+# tasks file for roles/kubernetesCore ingressTraefikEsp
+- name: Ingress deployment with '{{ ingressOption }}' in '{{ ingress.metadata.namespace }}'
+  community.kubernetes.k8s:
+    state: "{{ ingressState | default('present') }}"
+    definition:
+      apiVersion: extensions/v1beta1
+      kind: Ingress
+      metadata:
+        name: "{{ ingress.metadata.name }}"
+        namespace: "{{ ingress.metadata.namespace }}"
+        labels:
+          app.kubernetes.io/name: "{{ ingress.metadata.labels.name }}"
+          app.kubernetes.io/instance: "{{ ingress.metadata.labels.instance }}"
+          app.kubernetes.io/version: "{{ ingress.metadata.labels.version }}"
+          app.kubernetes.io/component: "{{ ingress.metadata.labels.component }}"
+          app.kubernetes.io/managed-by: "{{ ingress.metadata.labels.managed_by }}"
+        annotations:
+          kubernetes.io/ingress.class: "{{ ingress.metadata.annotations }}"
+      spec: "{{ spec | from_yaml }}"
+  vars:
+    spec: |
+      rules:
+      - host: "{{ ingress.spec.rules.host }}"
+        http:
+          paths:
+          - path: "{{ ingress.spec.rules.http.paths.path }}"
+            pathType: "{{ ingress.spec.rules.http.paths.pathType }}"
+            backend:
+              serviceName: "{{ ingress.spec.rules.http.paths.backend.serviceName }}"
+              servicePort: {{ ingress.spec.rules.http.paths.backend.servicePort }}
+  connection: local
+  delegate_to: localhost

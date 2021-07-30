@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# set -x
+# set -e
+
+kubeadm reset -f --cri-socket {{ kubernetes.socket.crio }}
+echo 'Removing kube-ipvs0 in case of baremetal'
+ip link delete kube-ipvs0
+echo 'Removing CNI configuration'
+rm -f /etc/cni/net.d/*
+echo 'Removing Calico Network interfaces'
+rm -f /opt/cni/bin/calico*
+echo 'Removing Weave Network interfaces'
+rm -f /opt/cni/bin/weave*
+echo 'Removing Flannel Network interfaces'
+rm -f /opt/cni/bin/flannel
+echo 'Removing $HOME/.kube dir'
+rm -rf {{ user_home_dir.stdout }}/.kube
+echo 'Removing /var/lib/kubeler dir'
+rm -rf /var/lib/kubelet/*
+echo 'Emptying /var/lib/etcd'
+rm -rf /var/lib/etcd
+echo 'Removing iptables'
+iptables -F && iptables -t nat -F && iptables -t mangle -F && iptables -X && iptables -t filter -F && iptables -t filter -X
+ipvsadm --clear
+echo 'Removing /etc/kubernetes to reset the character'
+rm -rf /etc/kubernetes
+echo 'Removing CRI-O images'
+crictl images -q | xargs -n 1 crictl rmi 2>/dev/null
+echo 'Docker processes'
+systemctl daemon-reload
+systemctl restart docker
+systemctl restart crio
+if ! [[ -z $(docker ps -q) ]]; then
+	docker restart $(docker ps -q)
+fi
+docker system prune -a -f --volumes
+echo 'Cleaning up go cache'
+go clean -cache

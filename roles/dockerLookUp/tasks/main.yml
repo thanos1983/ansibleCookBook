@@ -1,0 +1,53 @@
+---
+# tasks file for roles/docker ansible
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python3"
+
+- name: get the rpm package facts
+  ansible.builtin.package_facts:
+    manager: "auto"
+  no_log: true
+
+- name: populate service facts of host
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Debug docker service if running
+  ansible.builtin.debug:
+    var: ansible_facts.services['docker.service'].state
+  when: ansible_facts.services['docker.service'].state is defined
+
+- name: Get docker host info when docker is running
+  community.general.docker_host_info:
+  register: data
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+  no_log: true
+
+- name: Debug docker server version on host when docker is running
+  ansible.builtin.debug:
+    msg: "Server Version: '{{ data.host_info.ServerVersion }}' Storage Driver: '{{ data.host_info.Driver }}' Docker root Dir: '{{ data.host_info.DockerRootDir }}'"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: Check which volume group is used by docker root dir
+  register: volume_group
+  ansible.builtin.shell:
+    cmd: "df -h {{ data.host_info.DockerRootDir }}"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+  no_log: true
+
+- name: Debug volume group of docker
+  ansible.builtin.debug:
+    var: volume_group.stdout_lines
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"

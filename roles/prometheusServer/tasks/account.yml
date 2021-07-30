@@ -1,0 +1,17 @@
+---
+# tasks file for roles/prometheusServer account
+- name: Ensure group "{{ prometheus.systemAccount.name }}" exists with correct gid "{{ prometheus.systemAccount.gid  }}"
+  become: true
+  ansible.builtin.group:
+    name: "{{ prometheus.systemAccount.name }}"
+    state: present
+    gid: "{{ prometheus.systemAccount.gid }}"
+
+- name: Add the user "{{ prometheus.systemAccount.name }}" with shell "{{ prometheus.systemAccount.shell }}"
+  become: true
+  ansible.builtin.user:
+    name: "{{ prometheus.systemAccount.name }}"
+    shell: "{{ prometheus.systemAccount.shell }}"
+    comment: "{{ prometheus.systemAccount.comment }}"
+    uid: "{{ prometheus.systemAccount.uid }}"
+    group: "{{ prometheus.systemAccount.gid }}"

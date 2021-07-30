@@ -1,0 +1,52 @@
+---
+# tasks file for roles/docker container
+- name: Debug docker service if running
+  ansible.builtin.debug:
+    var: ansible_facts.services['docker.service'].state
+  when: ansible_facts.services['docker.service'].state is defined
+
+- name: List all running containers if daemon is running
+  become: true
+  community.general.docker_host_info:
+    containers: yes
+    containers_filters:
+      status: running
+  register: result
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: Debug all running containers if daemon is running
+  ansible.builtin.debug:
+    var: result.containers
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+    - result.containers | length != 0
+
+- name: Stop / Remove all running containers if daemon is running
+  become: true
+  community.general.docker_container:
+    name: "{{ item.Names[0] }}"
+    force_kill: yes
+    state: absent
+    container_default_behavior: compatibility
+  loop: "{{ result.containers }}"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+    - result.containers | length != 0
+
+- name: Prune everything (including non-dangling images) if daemon is running
+  become: true
+  community.general.docker_prune:
+    containers: yes
+    images: yes
+    images_filters:
+      dangling: false
+    networks: yes
+    volumes: yes
+    builder_cache: yes
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"

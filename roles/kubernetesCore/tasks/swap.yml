@@ -1,0 +1,26 @@
+---
+# tasks file for kubernetes yum
+- name: Disable swap because of kubernetes
+  become: true
+  ansible.builtin.shell:
+    cmd: swapoff -a
+
+- name: Disable swap in fstab because of kubernetes
+  become: true
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+swap\s+.*)$'
+    replace: '# \1'
+
+- name: Verify that fstab is correctly configured
+  become: true
+  register: fstab
+  ansible.builtin.shell:
+    cmd: mount -a
+  args:
+    warn: false
+
+- name: Debug fstab
+  ansible.builtin.debug:
+    var: fstab
+  when: fstab.stderr != ""

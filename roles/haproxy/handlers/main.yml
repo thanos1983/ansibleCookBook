@@ -1,0 +1,11 @@
+---
+# handlers file for roles/haproxy
+- name: restart haproxy
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: haproxy
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes

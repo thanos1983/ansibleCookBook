@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ configMap.name }}
+  namespace: {{ configMap.namespace }}
+data:
+  {{ configMap.data.name }}: |
+    server:
+      port: {{ application.serverPort }}
+
+    schema:
+      printer: false
+
+    file:
+      trades: "{{ application.file.trades }}"
+      equitySensitivities: "{{ application.file.equitySensitivities }}"
+
+    s3:
+      accessKeyId: "{{ application.s3.accessKeyId }}"
+      secretKey: "{{ application.s3.secretKey }}"
+      endpoint: "{{ application.s3.endpoint }}"
+      bucket:
+        name: "{{ application.s3.bucket.name }}"
+        prefix: "{{ application.s3.bucket.prefix }}"
+        equitySensitivities: "{{ application.s3.bucket.equitySensitivities }}"
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+
+    # Content hibernate properties
+    content:
+      hibernate:
+        connection:
+          url: "jdbc:h2:mem:content_service;DB_CLOSE_DELAY=-1"
+          driver_class: org.h2.Driver
+        dialect: "org.hibernate.dialect.H2Dialect"
+        show_sql: false
+        format_sql: false
+        hbm2ddl:
+          auto: update
+        hikari:
+          connectionTimeout: 30000
+          idleTimeout: 60000
+          minimumIdle: 1
+          maximumPoolSize: 10
+          poolName: "content"
+
+    # Properties used to configure the authentication based on JWT.
+    # You can execute JwtUtil to generate new keys.
+    qfs:
+      jwt:
+        key:
+          public: {{ public.key }} 
+          private: {{ private.key }}
+        expiration: 43200
+
+    # Content Server properties
+    contentServer:
+      security:
+        calculatedMemberRole: ROLE_USER
+        kpiRole: ROLE_USER
+        cache:
+          entitlementsTTL: 3600
+        # remote:
+        #   api:
+        #     uri:

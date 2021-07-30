@@ -1,0 +1,47 @@
+---
+# vars file for roles/prometheusServer
+prometheus:
+  conf:
+    port: '9090'
+    files:
+      web: 'web-config.yml'
+      glob: 'prometheus.yml'
+    dirs:
+      conf: '/etc/prometheus'
+      data: '/data01/{{ user }}/prometheus'
+  systemAccount:
+    name: 'nobody'
+    shell: '/bin/false'
+    uid: '65534'
+    gid: '65534'
+    groups: '{{ group }}'
+    comment: 'System Account for Prometheus'
+  cert:
+    dir: '/etc/prometheus/certs'
+    files:
+      ca: 'ca.cert'
+      key: 'ca.key'
+      crt: 'ca.crt'
+
+prom_repo:
+  repo: 'my.private.docker.domain/prometheus'
+  registry: 'my.private.docker.domain'
+  name: 'prometheus'
+  version: 'v2.28.0.1'
+
+portBinds:
+  - '{{ prometheus.conf.port }}:{{ prometheus.conf.port }}'
+
+portsToCheck:
+  - '{{ prometheus.conf.port }}'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/prometheus/ssl/sample.pfx'
+    secret_properties: 'secrets/common/prometheus/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ prometheus.cert.files.ca }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ prometheus.cert.files.key }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ prometheus.cert.files.crt }}'

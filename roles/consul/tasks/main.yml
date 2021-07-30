@@ -1,0 +1,19 @@
+---
+# tasks file for roles/consul main
+- name: Remove olf consul conf / service
+  ansible.builtin.include_tasks: oldConsulConf.yml
+
+- name: Pull CA, install / configure / service for Consul
+  block:
+    - name: CA certificates from Vault for consul
+      ansible.builtin.include_role:
+        name: vault
+
+    - name: Install consul on remote node
+      ansible.builtin.include_tasks: install.yml
+
+    - name: Consul agent configurations
+      ansible.builtin.include_tasks: agent.yml
+
+    - name: Consul configuration service
+      ansible.builtin.include_tasks: service.yml

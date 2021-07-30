@@ -1,0 +1,13 @@
+---
+# tasks file for roles/kubernetesCore pods
+- name: Get a list of all pods from any namespace
+  ansible.builtin.shell:
+    cmd: kubectl get pods -A
+  connection: local
+  delegate_to: localhost
+  register: pod_list
+  no_log: true
+
+- name: Debug Pod list
+  ansible.builtin.debug:
+    var: pod_list.stdout_lines

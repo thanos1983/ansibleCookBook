@@ -1,0 +1,66 @@
+---
+# tasks file for roles/kubernetesCore kubernetesCA
+- name: Kubernetes retrieve and push cert files to remote hosts
+  block:
+    - name: Change permission cert files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        mode: "0644"
+      loop:
+        - "{{ vault.sensitive_data.keyPathFile }}"
+        - "{{ vault.sensitive_data.crtPathFile }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Load files in vars
+      ansible.builtin.set_fact:
+        key: "{{ lookup('file', vault.sensitive_data.keyPathFile) }}"
+        crt: "{{ lookup('file', vault.sensitive_data.crtPathFile) }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create CA for kubernetes
+      ansible.builtin.template:
+        src: "{{ kubeadm.certfiles.ca }}.j2"
+        dest: "{{ role_path }}/files/{{ kubeadm.certfiles.ca }}"
+        mode: "0644"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create dir if does not exist on remote node
+      become: true
+      become_user: "{{ user }}"
+      ansible.builtin.file:
+        path: "{{ kubeadm.kubernetesCertDir }}"
+        state: directory
+        recurse: yes
+
+    - name: Copy all cert files into "{{ kubeadm.kubernetesCertDir }}"
+      become: true
+      become_user: "{{ user }}"
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ kubeadm.kubernetesCertDir }}/{{ item }}"
+        mode: "0644"
+      loop:
+        - "{{ kubeadm.certfiles.key }}"
+        - "{{ kubeadm.certfiles.crt }}"
+  rescue:
+    - name: Cleanup to remove sensitive data remotely from dir "{{ kubeadm.kubernetesCertDir }}"
+      become: true
+      become_user: "{{ user }}"
+      ansible.builtin.file:
+        path: "{{ kubeadm.kubernetesCertDir }}"
+        state: absent
+
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Fail while retrieve and push cert files to remote hosts
+  always:
+    - name: Cleanup to remove sensitive data localy
+      ansible.builtin.include_role:
+        name: vault
+        tasks_from: cleanUp

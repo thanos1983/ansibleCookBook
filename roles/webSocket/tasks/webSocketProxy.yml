@@ -1,0 +1,10 @@
+---
+# tasks file for roles/webSocket webSocketProxy
+- name: Create cockpit.conf for cross domain limitations
+  become: true
+  ansible.builtin.template:
+    src: "cockpit.conf.j2"
+    dest: "/etc/cockpit/cockpit.conf"
+    owner: "root"
+    group: "root"
+    mode: "0644"

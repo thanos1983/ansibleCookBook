@@ -1,0 +1,15 @@
+---
+# vars file for roles/unInstallPackages
+removePackages:
+  - PyYAML
+  - docker
+  - docker-client
+  - docker-client-latest
+  - docker-common
+  - docker-latest-logrotate
+  - docker-logrotate
+  - docker-engine
+  - python-requests
+  - python-urllib3
+  - device-mapper-persistent-data
+  - lvm2

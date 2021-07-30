@@ -1,0 +1,11 @@
+---
+# tasks file for roles/kubernetesMaster createClusterRoleUser
+- name: Create ServiceAccount
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: serviceAccount
+
+- name: Create ClusterRoleBinding
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: clusterRoleBinding

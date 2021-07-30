@@ -1,0 +1,10 @@
+apiVersion: kubeless.io/v1beta1
+kind: HTTPTrigger
+metadata:
+  name: {{ httpTrigger.metadata.name }}
+  namespace: {{ httpTrigger.metadata.namespace }}
+  annotations:
+    haproxy.org/path-rewrite: "/"
+spec:
+  function-name: {{ httpTrigger.spec.function_name }}
+  host-name: {{ httpTrigger.spec.host_name }}

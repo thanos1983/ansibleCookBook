@@ -1,0 +1,57 @@
+---
+# tasks file for roles/consul agent
+- name: Consul push conf / cert files to remote host(s)
+  block:
+    - name: Prepare config.json file
+      become: true
+      ansible.builtin.template:
+        src: "{{ consul.configurationFile[consul.character] }}"
+        dest: "{{ consul.directories.conf }}/config.json"
+        mode: "0644"
+
+    - name: Change permission cert files
+      ansible.builtin.file:
+        path: "{{ role_path }}/files/{{ item }}"
+        mode: "0644"
+      loop:
+        - "{{ consul.certfiles.key }}"
+        - "{{ consul.certfiles.crt }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Load files in vars
+      ansible.builtin.set_fact:
+        crt: "{{ lookup('file', '{{ role_path }}/files/{{ consul.certfiles.crt }}') }}"
+        key: "{{ lookup('file', '{{ role_path }}/files/{{ consul.certfiles.key }}') }}"
+      connection: local
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create CA for consul
+      ansible.builtin.template:
+        src: "{{ consul.certfiles.ca }}.j2"
+        dest: "{{ role_path }}/files/{{ consul.certfiles.ca }}"
+        mode: "0644"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Copy all cert files
+      become: true
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ consul.directories.cert }}/{{ item }}"
+        owner: "{{ user }}"
+        group: "{{ user }}"
+        mode: "0644"
+        backup: yes
+      loop: "{{ consul.certfiles.values() | flatten  }}"
+  rescue:
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Fail while pushing conf / cert files to remote hosts 
+  always:
+    - name: Cleanup to remove sensitive data
+      ansible.builtin.include_role:
+        name: vault
+        tasks_from: cleanUp

@@ -1,0 +1,16 @@
+---
+# tasks file for roles/crio validateCrio
+- name: Verify the connections with crio socket and also metrics
+  become: true
+  no_log: false
+  ansible.builtin.uri:
+    url: "{{ item.url }}"
+    unix_socket: "{{ item.unix_socket }}"
+    return_content: "{{ item.return_content }}"
+  loop: "{{ crio.uri }}"
+  register: crio_socket
+
+- name: Dump crio socket data
+  ansible.builtin.debug:
+    var: "crio_socket.results[0].json"
+  failed_when: crio_socket.results[0].status != 200 or crio_socket.results[1].status != 200

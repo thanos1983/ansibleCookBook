@@ -1,0 +1,11 @@
+---
+# tasks file for containersCore mountLV
+- name: Mount the LV(s)
+  become: true
+  ansible.posix.mount:
+    path: "{{ item.path }}"
+    src: "{{ item.src }}"
+    opts: "{{ item.opts }}"
+    state: "{{ item.state }}"
+    fstype: "{{ item.fstype }}"
+  loop: "{{ lvMount }}"

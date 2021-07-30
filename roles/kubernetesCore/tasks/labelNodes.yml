@@ -1,0 +1,7 @@
+---
+# tasks file for roles/kubernetesCore labelNodes
+- name: Label Node(s)
+  ansible.builtin.shell:
+    cmd: "kubectl label nodes {{ nodeHostName }}.{{ ansible_facts.dns.domain }} node-role.kubernetes.io/{{ nodeLabel }}='true'"
+  connection: local
+  delegate_to: localhost

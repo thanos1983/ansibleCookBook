@@ -1,0 +1,76 @@
+---
+# tasks file for roles/docker daemon
+- name: Stop daemon process before proceeding if running
+  become: true
+  ansible.builtin.systemd:
+    state: stopped
+    name: docker
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: Check if file(s) exist
+  become: true
+  register: paths
+  ansible.builtin.stat:
+    path: "{{ item.dest }}"
+  loop: "{{ dockerConfigurationFiles }}"
+
+- name: Rename docker configuration files if they exist
+  become: true
+  ansible.builtin.copy:
+    backup: "{{ item.stat.exists }}"
+    src: "{{ item.item.src }}"
+    dest: "{{ item.item.dest }}"
+    owner: "{{ item.item.owner }}"
+    group: "{{ item.item.group }}"
+    mode: "{{ item.item.mode }}"
+  loop: "{{ paths.results }}"
+
+- name: Add the necessary modules
+  become: true
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ modprobeModules }}"
+
+- name: Set syctl parameters and restart docker
+  become: true
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: "{{ item.sysctl_set }}"
+    state: "{{ item.state }}"
+    reload: "{{ item.reload }}"
+  loop: "{{ dockerSysctl.iptables }}"
+
+- name: Set overcommit parameter and restart docker if enabled
+  become: true
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: "{{ item.sysctl_set }}"
+    state: "{{ item.state }}"
+    reload: "{{ item.reload }}"
+  loop: "{{ dockerSysctl.overcommit }}"
+  when: overcommit_memory | default(false) | bool == true
+
+- name: Start docker if the previous task did not modify anything
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: docker
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes
+
+- name: Make sure that docker socket has correct permissions
+  become: true
+  register: docker_socket
+  ansible.builtin.file:
+    path: /var/run/docker.sock
+    owner: root
+    group: docker
+    mode: '0660'
+  notify: restart docker

@@ -1,0 +1,82 @@
+---
+# tasks file for roles/docker docker
+- name: Stop docker daemon service if running
+  become: true
+  service:
+    state: stopped
+    name: docker
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "running"
+
+- name: List / kill pid(s) if exist
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: hangedPids
+  vars:
+    socket: docker 
+
+- name: Debug docker storage driver
+  ansible.builtin.debug:
+    var: result.host_info.Driver
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - result.host_info.Driver is defined
+
+- name: Unmount a mounted volume
+  become: true
+  ansible.posix.mount:
+    path: "{{ item }}"
+    state: unmounted
+  loop: "{{ dockerDirectories }}"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "stopped"
+    - result.host_info.Driver is defined
+    - result.host_info.Driver != "overlay2"
+
+- name: Remove deprecated docker directories if they exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop: "{{ dockerDirectories }}"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "stopped"
+    - result.host_info.Driver is defined
+    - result.host_info.Driver != "overlay2"
+
+- name: Remove deprecated docker packages if they exist
+  become: true
+  ansible.builtin.yum:
+    name: "{{ deprecatedDockerPackageNames }}"
+    state: absent
+    autoremove: yes
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - ansible_facts.services['docker.service'].state == "stopped"
+    - result.host_info.Driver is defined
+    - result.host_info.Driver != "overlay2"
+    - "item in ansible_facts.packages"
+
+- name: Force fail in case of deprecated storage driver
+  ansible.builtin.fail:
+    msg: "Update the LVS and fstab with the mounting point for /var/lib/docker"
+  when:
+    - ansible_facts.services['docker.service'].state is defined
+    - result.host_info.Driver is defined
+    - result.host_info.Driver != "overlay2"
+
+- name: Install prerequisite packages for docker
+  become: true
+  ansible.builtin.yum:
+    name: "{{ prerequisiteDockerPackages }}"
+    state: latest
+
+- name: Install docker packages
+  become: true
+  ansible.builtin.yum:
+    name: "{{ dockerPackages }}"
+    state: latest
+  notify: restart docker

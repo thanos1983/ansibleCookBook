@@ -1,0 +1,137 @@
+---
+# tasks file for roles/crio main
+- name: Populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Stop CRI-O service
+  become: true
+  ansible.builtin.systemd:
+    name: crio
+    state: stopped
+  when:
+    - ansible_facts.services["crio.service"] is defined
+    - ansible_facts.services['crio.service'].state == "running"
+
+- name: Cleanup CRI-O data dirs
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: cleanupCrio
+  vars:
+    removeCrioConf: true
+
+- name: Install crio dependency packages for RH7
+  become: true
+  ansible.builtin.yum:
+    name: "{{ crioPackages.rh7 }}"
+    state: latest
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Install crio dependency packages for RH8
+  become: true
+  ansible.builtin.dnf:
+    name: "{{ crioPackages.rh8 }}"
+    state: latest
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '8'
+
+- name: Create dirs if they do not exist
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ crio.dirs }}"
+
+- name: Extract / install / configure cri-o
+  block:
+    - name: Extract packages into directories
+      ansible.builtin.unarchive:
+        src: "{{ item.value.src }}"
+        dest: "{{ item.value.dest }}"
+        remote_src: yes
+      loop: "{{ lookup('dict', containerRunTimeInterface, wantlist=True) }}"
+
+    - name: Compile packages cri-o / conmon 
+      become: true
+      community.general.make:
+        chdir: "{{ item.value.dest }}/{{ item.value.version }}"
+      loop: "{{ lookup('dict', containerRunTimeInterface, wantlist=True) }}"
+
+    - name: Install packages cri-o / conmon
+      become: true
+      community.general.make:
+        chdir: "{{ item.value.dest }}/{{ item.value.version }}"
+        target: install
+      loop: "{{ lookup('dict', containerRunTimeInterface, wantlist=True) }}"
+  rescue:
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Check error above in logs
+  always:
+    - name: Cleanup to remove tar files
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.value.dest }}/{{ item.value.version }}"
+        state: absent
+      loop: "{{ lookup('dict', containerRunTimeInterface, wantlist=True) }}"
+
+- name: Copy crio config files and registries
+  become: true
+  register: crio_conf
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ crio.confFiles }}"
+
+- name: Get CAs for CRIO-O /metrics
+  ansible.builtin.include_role:
+    name: vault
+
+- name: Copy CAs to CRI-O certs dir
+  become: true
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ kubernetes.crio.cert.dir }}/{{ item }}"
+  loop:
+    - "{{ kubernetes.crio.cert.files.key }}"
+    - "{{ kubernetes.crio.cert.files.crt }}"
+
+- name: Configure containers storage.conf file
+  become: true
+  ansible.builtin.lineinfile:
+    create: yes
+    path: "/etc/containers/storage.conf"
+    regexp: "^(.*)graphroot =(.*)$"
+    line: graphroot = "{{ storage.crio.graphroot }}"
+    owner: "root"
+    group: "root"
+    mode: "0644"
+
+- name: Add a line to a file if the file does not exist, without passing regexp
+  become: true
+  ansible.builtin.lineinfile:
+    path: "/usr/lib/sysctl.d/99-containers.conf"
+    line: "fs.may_detach_mounts=1"
+    create: yes
+  when:
+    - ansible_distribution == 'CentOS' or ansible_distribution == 'RedHat'
+    - ansible_distribution_major_version == '7'
+
+- name: Restart CRI-O socket to load all configurations
+  become: true
+  ansible.builtin.systemd:
+    masked: no
+    enabled: yes
+    name: crio
+    state: restarted
+    daemon_reload: yes
+    daemon_reexec: yes

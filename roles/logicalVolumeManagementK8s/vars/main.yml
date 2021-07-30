@@ -1,0 +1,17 @@
+---
+# vars file for logicalVolumeManagementK8s
+directories:
+  - { path: '{{ storage.crio.runroot }}', state: 'directory', owner: 'root', group: 'root', mode: '0755' }
+  - { path: '{{ storage.crio.graphroot }}', state: 'directory', owner: 'root', group: 'root', mode: '0755' }
+
+logical_volumes:
+  - { vg: 'appvg', lv: 'k8s_run', size: '10g', force: 'yes' }
+  - { vg: 'appvg', lv: 'k8s_overlay', size: '50g', force: 'yes' }
+
+filesystemOpt:
+  - { fstype: 'xfs', dev: '/dev/{{ logical_volumes[0].vg }}/{{ logical_volumes[0].lv }}', opts: '-n ftype=1' }
+  - { fstype: 'xfs', dev: '/dev/{{ logical_volumes[1].vg }}/{{ logical_volumes[1].lv }}', opts: '-n ftype=1' }
+
+lvMount:
+  - { src: '/dev/{{ logical_volumes[0].vg }}/{{ logical_volumes[0].lv }}', path: '{{ storage.crio.runroot }}', opts: 'defaults', state: 'mounted', fstype: 'xfs' }
+  - { src: '/dev/{{ logical_volumes[1].vg }}/{{ logical_volumes[1].lv }}', path: '{{ storage.crio.graphroot }}', opts: 'defaults', state: 'mounted', fstype: 'xfs' }

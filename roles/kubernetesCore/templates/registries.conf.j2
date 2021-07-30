@@ -1,0 +1,10 @@
+unqualified-search-registries = ["{{ kubernetes.imagesRepo.registry }}"]
+
+[[registry]]
+prefix = "k8s.gcr.io"
+insecure = false
+blocked = false
+location = "k8s.gcr.io"
+
+[[registry.mirror]]
+location = "{{ kubernetes.imagesRepo.registry }}"

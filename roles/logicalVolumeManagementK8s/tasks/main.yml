@@ -1,0 +1,50 @@
+---
+# tasks file for logicalVolumeManagementK8s main
+- name: Populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Create and manage LVM
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: lvm.yml
+
+- name: Debug crio service if running
+  ansible.builtin.debug:
+    var: ansible_facts.services['crio.service'].state
+  when: ansible_facts.services['crio.service'].state is defined
+
+- name: Stop CRI-O before mounting LV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: crio
+    serviceState: stopped
+  when:
+    - ansible_facts.services['crio.service'].state is defined
+    - ansible_facts.services['crio.service'].state == "running"
+
+- name: Cleanup dirs before proceeding
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: cleanupCrio
+
+- name: Prepare / permissions CRI-O dirs for the lV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: createDirs
+
+- name: Prepare mounting for the lV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: mountLV
+
+- name: Start CRI-O after mounting the LV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: crio
+    serviceState: restarted
+  when: ansible_facts.services['crio.service'].state is defined

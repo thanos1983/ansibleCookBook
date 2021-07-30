@@ -1,0 +1,38 @@
+---
+# vars file for roles/minio
+volumes:
+  data: '/data01/{{ user }}/data'
+  certificates: '/data01/{{ user }}/.minio'
+
+certificates:
+  ca: 'ca.cert'
+  crt: 'public.crt'
+  key: 'private.key'
+
+minio:
+  repo: 'my.private.repo/minio/minio'
+  registry: 'my.private.repo'
+  deploy_tag: '2021-02'
+  name: 'minio'
+  port: 9000
+
+portBinds:
+  - '{{ minio.port }}:{{ minio.port }}'
+
+portsToCheck:
+  - '{{ minio.port }}'
+
+minio_env:
+  MINIO_ROOT_USER: '{{ user }}'
+  MINIO_ROOT_PASSWORD: '{{ user }}'
+
+vault:
+  vault_paths:
+    cert_path: 'files/ca.pem'
+    secret_pfx: 'secrets/common/minio/ssl/my.pfx'
+    secret_properties: 'secrets/common/minio/common.properties'
+  sensitive_data:
+    pfxPathFile: '{{ ansible_parent_role_paths[0] }}/files/ca.pfx'
+    caPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ certificates.ca }}'
+    crtPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ certificates.crt }}'
+    keyPathFile: '{{ ansible_parent_role_paths[0] }}/files/{{ certificates.key }}'

@@ -1,0 +1,35 @@
+---
+# tasks file for logicalVolumeManagement yum
+- name: Create and manage LVM
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: lvm.yml
+
+- name: Stop docker daemon before mounting LV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: docker
+    serviceState: stopped
+
+- name: Remove Docker dir before mounting
+  ansible.builtin.include_tasks: cleanup.yml
+
+- name: Prepare / permissions docker dirs for the lV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: createDirs
+
+- name: Prepare mounting for the lV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: mountLV
+
+- name: Start CRI-O after mounting the LV
+  ansible.builtin.include_role:
+    name: containersCore
+    tasks_from: service
+  vars:
+    serviceName: docker
+    serviceState: restarted

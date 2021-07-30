@@ -1,0 +1,55 @@
+---
+# tasks file for roles/vault main
+- name: Vault get and extract CA via TOKEN for "{{ env_variable }}"
+  block:
+    - name: Vault get pfx file
+      ansible.builtin.set_fact:
+        pfx_file: "{{ lookup('hashi_vault',
+        'secret={{ vault.vault_paths.secret_pfx }}
+         token={{ token }}
+         url={{ url }}
+         cacert={{ role_path }}/{{ vault.vault_paths.cert_path }}') }}"
+
+    - name: Vault get common.properties
+      ansible.builtin.set_fact:
+        common_properties: "{{ lookup('hashi_vault',
+        'secret={{ vault.vault_paths.secret_properties }}
+         token={{ token }} 
+         url={{ url }} 
+         cacert={{ role_path }}/{{ vault.vault_paths.cert_path }}') }}"
+
+    - name: Debug pfx file
+      ansible.builtin.debug:
+        msg: "{{ pfx_file['BASE64'] }}"
+
+    - name: Debug Common Properties
+      ansible.builtin.debug:
+        msg: "{{ common_properties['ssl.keystore.password'] }}"
+
+    - name: Decode the base64 string into a binary file
+      ansible.builtin.copy:
+        dest: "{{ vault.sensitive_data.pfxPathFile }}"
+        content: "{{ pfx_file['BASE64'] | b64decode }}"
+        mode: "0644"
+
+    - name: Export Cert from Certificate
+      ansible.builtin.shell:
+        cmd: "openssl pkcs12 -in {{ vault.sensitive_data.pfxPathFile }} \
+              -nokeys -out {{ vault.sensitive_data.crtPathFile }} \
+              -passin pass:{{ common_properties['ssl.keystore.password'] }}"
+
+    - name: Export Key from Certificate
+      ansible.builtin.shell:
+        cmd: "openssl pkcs12 -in {{ vault.sensitive_data.pfxPathFile }} \
+              -nocerts -nodes -out {{ vault.sensitive_data.keyPathFile }} \
+              -passin pass:{{ common_properties['ssl.keystore.password'] }}"
+  rescue:
+    - name: Cleanup to remove sensitive data
+      ansible.builtin.include_tasks: cleanUp.yml
+
+    - name: Force FAIL if error in block occured
+      ansible.builtin.fail:
+        msg: Fail while trying to retrieve CAs
+  delegate_to: localhost
+  connection: local
+  run_once: true

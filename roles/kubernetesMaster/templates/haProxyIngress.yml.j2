@@ -1,0 +1,219 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: haproxy-controller
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: haproxy-ingress-service-account
+  namespace: haproxy-controller
+
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: haproxy-ingress-cluster-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - nodes
+  - pods
+  - services
+  - namespaces
+  - events
+  - serviceaccounts
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - "extensions"
+  resources:
+  - ingresses
+  - ingresses/status
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+- apiGroups:
+  - extensions
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: haproxy-ingress-cluster-role-binding
+  namespace: haproxy-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: haproxy-ingress-cluster-role
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress-service-account
+  namespace: haproxy-controller
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-configmap
+  namespace: haproxy-controller
+data:
+  check: "true"
+  dontlognull: "true"
+  check-interval: "1m"
+  load-balance: "leastconn"
+  log-format: "%ci:%cp [%tr] %ft %b/%s %TR/%Tw/%Tc/%Tr/%Ta %ST %B %CC %CS %tsc %ac/%fc/%bc/%sc/%rc %sq/%bq %hr %hs \"%HM %[var(txn.base)] %HV\""
+  whitelist: "{% for ind in range(0, (groups['kubernetesLoadBalancer'] | length | int)) -%}
+  {{ loadBalancerFacts.results[ind].ansible_facts.facter_networking.ip }}
+  {%- if not loop.last %}, {% endif -%}
+  {%- endfor %}"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    run: ingress-default-backend
+  name: ingress-default-backend
+  namespace: haproxy-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: ingress-default-backend
+  template:
+    metadata:
+      labels:
+        run: ingress-default-backend
+    spec:
+      containers:
+      - name: ingress-default-backend
+        image: rmy.private.docker.domain/google_containers/defaultbackend:1.0
+        ports:
+        - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: ingress-default-backend
+  name: ingress-default-backend
+  namespace: haproxy-controller
+spec:
+  selector:
+    run: ingress-default-backend
+  ports:
+  - name: port-1
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    run: haproxy-ingress
+  name: haproxy-ingress
+  namespace: haproxy-controller
+spec:
+  selector:
+    matchLabels:
+      run: haproxy-ingress
+  template:
+    metadata:
+      labels:
+        run: haproxy-ingress
+    spec:
+      serviceAccountName: haproxy-ingress-service-account
+      nodeSelector:
+        "node-role.kubernetes.io/ingress": "true"
+      tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "ingress-controller"
+        effect: "NoSchedule"
+      containers:
+      - name: haproxy-ingress
+        image: rmy.private.docker.domain/haproxytech/kubernetes-ingress:1.4.13
+        args:
+          - --configmap=haproxy-controller/haproxy-configmap
+          - --default-backend-service=haproxy-controller/ingress-default-backend
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "50Mi"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 1042
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        - name: stat
+          containerPort: 1024
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: haproxy-ingress
+  name: haproxy-ingress
+  namespace: haproxy-controller
+spec:
+  # this setting is to make sure the source IP address is preserved.
+  externalTrafficPolicy: Local
+  selector:
+    run: haproxy-ingress
+  type: LoadBalancer
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    # targetPort: 443
+    nodePort: {{ kubernetes.ingress.nodePort.https }}
+  - name: stat
+    port: 1024
+    protocol: TCP
+    # targetPort: 1024
+    nodePort: {{ kubernetes.ingress.nodePort.stats }}

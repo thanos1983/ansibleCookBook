@@ -1,0 +1,46 @@
+---
+# tasks file for roles/kubernetesMaster uploadCerts
+- name:  Update default certs and encryption key that have expired
+  become: true
+  run_once: true
+  delegate_to: "{{ masterActiveNodes[-1] }}"
+  block:
+    - name: Gather facts for backend load balancer(s)
+      register: loadBalancerFacts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "!any"
+          - "network"
+          - "virtual"
+          - "facter"
+      delegate_facts: true
+      delegate_to: "{{ item }}"
+      loop: "{{ groups['kubernetesLoadBalancer'] }}"
+
+    - name: Create dir '/etc/kubernetes' in case that does not exist
+      ansible.builtin.file:
+        path: /etc/kubernetes
+        state: directory
+        mode: '0755'
+
+    - name: Copy kubeadm.conf file to one of active master nodes
+      ansible.builtin.template:
+        src: "{{ kubeadmFiles.kubeadmConfFile.src }}"
+        dest: "{{ kubeadmFiles.kubeadmConfFile.dest }}"
+        owner: "{{ kubeadmFiles.kubeadmConfFile.owner }}"
+        group: "{{ kubeadmFiles.kubeadmConfFile.group }}"
+        mode: "{{ kubeadmFiles.kubeadmConfFile.mode }}"
+
+    - name: Upload control-plane certificates to the cluster
+      ansible.builtin.shell:
+        cmd: >
+              kubeadm init phase upload-certs
+              --upload-certs
+              --skip-certificate-key-print
+              --config {{ kubeadmFiles.kubeadmConfFile.dest }}
+  always:
+    - name: Remove kubeadm file
+      ansible.builtin.file:
+        state: absent
+        path: "{{ kubeadmFiles.kubeadmConfFile.dest }}"

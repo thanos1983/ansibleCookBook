@@ -1,0 +1,138 @@
+---
+# vars file for roles/activeUiBackEnd
+version: 'v0.0.1'
+
+application:
+  serverPort: 9090
+  app: 'pivot-backend-{{ kubernetes.rbac.user }}' # low case
+  serviceBackEndAdress: 'activepivot.my.private.domain.com'
+  file:
+    trades: 'data/trades.csv'
+    equitySensitivities: 'data/equitySensitivitiesAggregated.csv'
+  s3:
+    accessKeyId: 'technicalUser'
+    secretKey: 'technicalUser'
+    endpoint: 'https://dev-minio.my.private.domain.com'
+    bucket:
+      name: 'hackathon'
+      prefix: '/data'
+      equitySensitivities: 'equitySensitivitiesAggregated.csv'
+
+kubeadm:
+  cluster:
+    namespace: 'namespace-{{ kubernetes.rbac.user }}'
+
+domain:
+  url: '{{ application.serviceBackEndAdress }}' # do not modify
+
+configMap:
+  metadata:
+    name: 'configmap-{{ kubernetes.rbac.user }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      name: 'configMap-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'configMap-{{ ingressOption }}'
+      managed_by: 'ansible'
+  data:
+    name: 'application.yml'
+    configMap: 'application.yml.j2'
+
+volumes:
+  name: 'pivot-application-file'
+  mountPath: '/app-home/config'
+  configMap:
+    name: '{{ configMap.metadata.name }}'
+
+deployment:
+  metadata:
+    name: 'deployment-{{ application.app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'deployment-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'webServer'
+      managed_by: 'ansible'
+  spec:
+    replicas: '1'
+    selector:
+      matchLabels:
+        app: '{{ application.app }}'
+    template:
+      metadata:
+        labels:
+          app: '{{ application.app }}'
+      spec:
+        containers:
+          name: '{{ application.app }}'
+          image: 'my.private.docker.domain/pivot-springboot:0.0.11m'
+          imagePullPolicy: 'IfNotPresent'
+          resources:
+            requests:
+              memory: '1000Mi'
+              cpu: '1000m'
+            limits:
+              memory: '2000Mi'
+              cpu: '1000m'
+          ports:
+            containerPort: '{{ application.serverPort }}'
+          volumeMounts:
+            name: '{{ volumes.name }}'
+            mountPath: '{{ volumes.mountPath }}'
+        volumes:
+          name: '{{ volumes.name }}'
+          configMap:
+            name: '{{ volumes.configMap.name }}'
+
+service:
+  metadata:
+    name: 'service-{{ application.app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'service-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'service-ingress'
+      managed_by: 'ansible'
+  spec:
+    selector:
+      app: '{{ application.app }}'
+    ports:
+      name: 'backport'
+      port: 80
+      targetPort: '{{ application.serverPort }}'
+    type: 'ClusterIP'
+
+ingress:
+  metadata:
+    name: 'ingress-{{ application.app }}'
+    namespace: '{{ kubeadm.cluster.namespace }}'
+    labels:
+      app: '{{ application.app }}'
+      name: 'ingress-{{ application.app }}'
+      instance: '{{ application.app }}'
+      version: '{{ version }}'
+      component: 'ingress-{{ env_variable }}'
+      managed_by: 'ansible'
+  spec:
+    tls:
+      hosts: '{{ domain.url }}'
+    rules:
+      host: '{{ domain.url }}'
+      http:
+        paths:
+          path: '/'
+          pathType: 'Prefix'
+          backend:
+            service:
+              name: '{{ service.metadata.name }}'
+              port:
+                number: 80
+  certfiles:
+    pfx: 'ca.pfx'
+    key: 'ca.key'
+    crt: 'ca.crt'

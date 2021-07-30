@@ -1,0 +1,25 @@
+---
+# tasks file for roles/kubernetesCore activeIngressNodes
+- name: ingressActiveNodes (define an empty list)
+  ansible.builtin.set_fact:
+    ingressActiveNodes: []
+
+- name: Register active ingress node(s) on cluster
+  ansible.builtin.set_fact:
+    ingressActiveNodes: "{{ ingressActiveNodes + [ item.split()[0] ] }}"
+  when:
+    - nodes is defined
+    - nodes.changed == true
+    - nodes.stdout_lines != ''
+    - "'ingress' in item"
+    - ansible_hostname not in ingressActiveNodes
+  loop: "{{ nodes.stdout_lines }}"
+
+- name: Active ingress node(s)
+  ansible.builtin.debug:
+    var: ingressActiveNodes
+  when:
+    - nodes is defined
+    - nodes.changed == true
+    - nodes.stdout_lines != ''
+    - ingressActiveNodes | length > 0

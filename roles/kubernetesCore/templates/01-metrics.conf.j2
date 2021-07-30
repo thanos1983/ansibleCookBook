@@ -1,0 +1,5 @@
+[crio.metrics]
+enable_metrics = true
+metrics_port = {{ kubernetes.crio.metricsPort }}
+metrics_cert = "{{ kubernetes.crio.cert.dir }}/{{ kubernetes.crio.cert.files.crt }}"
+metrics_key = "{{ kubernetes.crio.cert.dir }}/{{ kubernetes.crio.cert.files.key }}"

@@ -1,0 +1,50 @@
+---
+# tasks file for  roles/webSocket websocket
+- name: Create dir for conf websocket
+  become: true
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: "{{ item.state }}"
+    mode: "{{ item.mode }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+  loop: "{{ cockpit.socket }}"
+
+- name: Load files in vars
+  ansible.builtin.set_fact:
+    crt: "{{ lookup('file', 'my.crt') }}"
+    key: "{{ lookup('file', 'my.key') }}"
+  connection: local
+  delegate_to: localhost
+  run_once: true
+
+- name: Create ws-certs for https cockpit
+  become: true
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ cockpit.conf }}"
+
+- name: Debug alternative way
+  ansible.builtin.debug:
+    msg: "Alternative way from command ansible.builtin.shell: sed -n w/etc/cockpit/ws-certs.d/50-from-certmonger.cert /tmp/my.cert.crt /tmp/my.cert.key"
+  run_once: true
+
+- name: Check that the certificate is correctly created
+  become: true
+  register: ws_cert
+  ansible.builtin.shell:
+    cmd: "remotectl certificate"
+
+- name: Verify that the certificate is correctly created else fail
+  ansible.builtin.fail:
+    msg: "The certificate is not correct - '{{ ws_cert.stdout }}'"
+  when: "'50-from-certmonger.cert' not in ws_cert.stdout"
+
+- name: Cleanup to remove sensitive data
+  ansible.builtin.include_role:
+    name: vault
+    tasks_from: cleanUp

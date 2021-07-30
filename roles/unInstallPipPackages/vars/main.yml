@@ -1,0 +1,11 @@
+---
+# vars file for unInstallPipPackages
+pipUninstallPackages:
+  - k8s
+  - idna
+  - docker
+  - systemd
+  - urllib3
+  - requests
+  - docker-py
+  - websocket-client

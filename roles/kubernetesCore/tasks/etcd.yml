@@ -1,0 +1,10 @@
+---
+# tasks file for roles/kubernetesCore etcd
+- name: Get list of active master node(s)
+  ansible.builtin.include_tasks: activeMasterNodes.yml
+
+- name: List etcd members in the cluster
+  ansible.builtin.include_tasks: etcdListCusterMembers.yml
+
+- name: Remove etcd members from the cluster
+  ansible.builtin.include_tasks: etcdRemoveClusterMember.yml

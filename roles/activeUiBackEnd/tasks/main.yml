@@ -1,0 +1,24 @@
+---
+# tasks file for roles/activeUiBackEnd
+- name: Complete ActiveUI Back End Deployment
+  block:
+    - name: Create '{{ configMap.data.name }}' file for Deployment
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: configMap
+
+    - name: Deployment ActiveUI BackEnd
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: deployResourcesVolume
+
+    - name: Create Service(s)
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: service
+
+    - name: Create Ingress HaProxy
+      ansible.builtin.include_role:
+        name: kubernetesCore
+        tasks_from: ingressHaProxyFlat
+  run_once: true

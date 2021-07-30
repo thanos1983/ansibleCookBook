@@ -1,0 +1,44 @@
+---
+# tasks file for roles/kubernetesCore drain
+- name: List of nodes and categorize them
+  block:
+    - name: Get list of active master node(s)
+      ansible.builtin.include_tasks: activeMasterNodes.yml
+
+    - name: List nodes in the k8s cluster
+      ansible.builtin.include_tasks: status.yml
+      when:
+        - masterActiveNodes is defined
+        - masterActiveNodes | length > 0
+
+    - name: Get list of active worker node(s)
+      ansible.builtin.include_tasks: activeWorkerNodes.yml
+
+    - name: Get list of ingress worker node(s)
+      ansible.builtin.include_tasks: activeIngressNodes.yml
+      when: ingressListReset | default(true)
+  run_once: true
+
+- name: Drain node(s) from k8s master cluster
+  connection: local
+  delegate_to: localhost
+  ansible.builtin.shell:
+    cmd: "{{ removeNode.drain }}"
+  loop: "{{ nodes.stdout_lines }}"
+  when:
+    - nodes is defined
+    - nodes.rc is defined
+    - nodes.rc == 0
+    - "ansible_hostname in item"
+
+- name: Delete node(s) from k8s master cluster
+  connection: local
+  delegate_to: localhost
+  ansible.builtin.shell:
+    cmd: "{{ removeNode.delete }}"
+  loop: "{{ nodes.stdout_lines }}"
+  when:
+    - nodes is defined
+    - nodes.rc is defined
+    - nodes.rc == 0
+    - "ansible_hostname in item"

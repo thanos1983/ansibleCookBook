@@ -1,0 +1,35 @@
+---
+- name: Dashboard UI Token procedures
+  block:
+    - name: Wait till Kubernetes Dashboard is created
+      community.kubernetes.k8s_info:
+        kind: Pod
+        wait: yes
+        name: kubernetes-dashboard
+        namespace: kubernetes-dashboard
+        wait_sleep: 5
+        wait_timeout: 20
+
+    - name: Retrieve Token for UI
+      ansible.builtin.shell:
+        cmd: "kubectl -n kubernetes-dashboard describe secret $(kubectl -n kubernetes-dashboard get secret | grep {{ kubeadm.clusterRoleUser.name }} | awk '{print $1}')"
+      register: kubectl_token
+      no_log: true
+
+    - name: Debug Token
+      ansible.builtin.debug:
+        msg: "{{ kubectl_token.stdout_lines | select('match','token:*') | list | first }}"
+
+    - name: Replace token on Readme file
+      ansible.builtin.replace:
+        path: "{{ role_path }}/README.md"
+        regexp: "token:(\\s+.*)?$"
+        replace: "{{ kubectl_token.stdout_lines | select('match','token:*') | list | first }}"
+
+    - name: Add Token for Admin Dashboard
+      ansible.builtin.lineinfile:
+        state: present
+        path: "~/.kube/config"
+        line: "    {{ kubectl_token.stdout_lines | select('match','token:*') | list | first }}"
+  connection: local
+  delegate_to: localhost

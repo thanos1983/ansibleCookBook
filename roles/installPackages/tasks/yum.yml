@@ -1,0 +1,52 @@
+---
+# tasks file for roles/installPackages yum
+- name: Validate Python Interpeter
+  ansible.builtin.include_role:
+    name: kubernetesCore
+    tasks_from: interpreterValidation
+  vars:
+    pythonInterpreter: "python"
+
+- name: Gather the package facts
+  ansible.builtin.package_facts:
+    manager: auto
+  no_log: true
+
+- name: Remove deprecated yum packages
+  ansible.builtin.include_role:
+    name: unInstallPackages
+
+- name: Remove deprecated pip packages
+  ansible.builtin.include_role:
+    name: unInstallPipPackages
+  when: "'python2-pip' in ansible_facts.packages"
+
+- name: Install yum packages
+  become: true
+  ansible.builtin.yum:
+    name: "{{ yumPackages }}"
+    state: latest
+  when: "'docker-ce' not in ansible_facts.packages"
+
+- name: Install required pip packages
+  ansible.builtin.include_role:
+    name: installPipPackages
+  when: "'python2-pip' in ansible_facts.packages"
+
+- name: Include docker role
+  ansible.builtin.include_role:
+    name: docker
+  when: "'docker-ce' in ansible_facts.packages"
+
+- name: Upgrade all packages
+  become: true
+  ansible.builtin.yum:
+    name: "*"
+    state: latest
+
+- name: Install the group packages
+  become: true
+  ansible.builtin.yum:
+    name: "{{ item }}"
+    state: latest
+  loop: "{{ yumTools }}"

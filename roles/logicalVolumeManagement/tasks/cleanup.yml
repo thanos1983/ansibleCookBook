@@ -1,0 +1,7 @@
+---
+# tasks file for logicalVolumeManagementDocker cleanup
+- name: Remove Docker directories for cleanup before proceeding
+  become: true
+  ansible.builtin.file:
+    path: "{{ storage.docker.graphroot }}"
+    state: absent
