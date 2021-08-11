@@ -101,7 +101,7 @@ The user has the ability to run the script even if there is no ansible installed
 # Launch virtualenv
 cd project_folder e.g # test
 $ virtualenv -p /usr/bin/python3.6 venv # path to what ever binary we have of python 
-$ source venv/bin/activate
+$ source test/bin/activate
 $ python3 -m pip install ansible hvac k8s openshift -U
 $ deactivate # to deactivate
 $ rm -rf test # remove test dir
