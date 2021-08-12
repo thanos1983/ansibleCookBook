@@ -4,7 +4,7 @@
   block:
     - name: Vault get pfx file
       ansible.builtin.set_fact:
-        pfx_file: "{{ lookup('hashi_vault',
+        pfx_file: "{{ lookup('community.hashi_vault.hashi_vault',
         'secret={{ vault.vault_paths.secret_pfx }}
          token={{ token }}
          url={{ url }}
@@ -12,7 +12,7 @@
 
     - name: Vault get common.properties
       ansible.builtin.set_fact:
-        common_properties: "{{ lookup('hashi_vault',
+        common_properties: "{{ lookup('community.hashi_vault.hashi_vault',
         'secret={{ vault.vault_paths.secret_properties }}
          token={{ token }} 
          url={{ url }} 
