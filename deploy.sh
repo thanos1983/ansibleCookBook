@@ -10,12 +10,12 @@ function error() {
 function deploy() {
 
 	bamboo_env=${bamboo_env:="dev"}
-	bamboo_ansible_user=${bamboo_ansible_user:="technicalUser"}
-	bamboo_ansible_skip_tags=${bamboo_ansible_skip_tags:="never"}
-	bamboo_ansible_tags=${bamboo_ansible_tags:="dockerLookUp"}
-	bamboo_ansible_password=${bamboo_ansible_password:="technicalPassword"}
-	bamboo_target_hosts_group=${bamboo_target_hosts_group:="demo"}
+	bamboo_ansible_tags=${bamboo_ansible_tags:="ping"}
 	bamboo_vault_token=${bamboo_vault_token:="myToken"}
+	bamboo_ansible_user=${bamboo_ansible_user:="tinyos"}
+	bamboo_ansible_skip_tags=${bamboo_ansible_skip_tags:="never"}
+	bamboo_target_hosts_group=${bamboo_target_hosts_group:="local"}
+	bamboo_ansible_password=${bamboo_ansible_password:="technicalPassword"}
 
 	case "${bamboo_env}" in
 		"dev")
