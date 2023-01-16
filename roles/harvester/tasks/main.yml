@@ -1,0 +1,8 @@
+---
+# tasks file for roles/harvester
+- name: populate service facts
+  ansible.builtin.service_facts:
+  no_log: true
+
+- name: Prepare Harvester Configuration file(s)
+  ansible.builtin.include_tasks: configuration.yml

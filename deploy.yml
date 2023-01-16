@@ -2,8 +2,12 @@
 - hosts: "{{ target_hosts }}"
   remote_user: "{{ ansible_user }}"
   any_errors_fatal: true
-  
+
   roles:
+    - role: ping
+      tags: [ ping ]
+    - role: harvester
+      tags: [ harvester ]
     - role: dockerLookUp
       tags: [ dockerLookUp ]
     - role: addRepo

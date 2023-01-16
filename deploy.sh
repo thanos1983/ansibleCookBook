@@ -10,7 +10,7 @@ function error() {
 function deploy() {
 
 	bamboo_env=${bamboo_env:="dev"}
-	bamboo_ansible_tags=${bamboo_ansible_tags:="ping"}
+	bamboo_ansible_tags=${bamboo_ansible_tags:="harvester"}
 	bamboo_vault_token=${bamboo_vault_token:="myToken"}
 	bamboo_ansible_user=${bamboo_ansible_user:="tinyos"}
 	bamboo_ansible_skip_tags=${bamboo_ansible_skip_tags:="never"}

@@ -1,0 +1,10 @@
+---
+# vars file for roles/harvester
+configuration:
+  nodes:
+    - "master"
+    - "slave1"
+  cluster_VIP: "127.0.0.1"
+  token: "my_cluster_token"
+  ssh_authorized_keys:
+    - "AAAAB3NzaC1yc2EAAAADAQAB..."
