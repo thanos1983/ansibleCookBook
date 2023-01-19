@@ -1,10 +1,66 @@
 ---
 # vars file for roles/harvester
+ansible_connection: local
+harvester:
+  iso_url: "https://releases.rancher.com/harvester/v1.1.1/harvester-v1.1.1-amd64.iso"
+  iso_image: "harvester_v1_1_1.iso"
 configuration:
-  nodes:
-    - "master"
-    - "slave1"
   cluster_VIP: "127.0.0.1"
   token: "my_cluster_token"
-  ssh_authorized_keys:
-    - "AAAAB3NzaC1yc2EAAAADAQAB..."
+  hosts:
+    node1:
+      os:
+        mode: "create"
+      install:
+        management_interface:
+          interfaces:
+          - name: "ens5"
+            hwAddr: "B8:CA:3A:6A:64:7C"
+    node2:
+      os:
+        mode: "join"
+      install:
+        management_interface:
+          interfaces:
+          - name: "ens6"
+            hwAddr: "B8:CA:3A:6A:64:8C"
+          - name: "ens7"
+            hwAddr: "B8:CA:3A:6A:64:9C"
+  os:
+    ssh_authorized_keys:
+      - "AAAAB3NzaC1yc2EAAAADAQAB..."
+    modules:
+      - kvm
+      - nvme
+    dns_nameservers:
+      - 10.96.4.10
+      - 10.96.4.11
+    ntp_servers:
+      - 0.dk.pool.ntp.org
+      - 1.dk.pool.ntp.org
+      - 2.dk.pool.ntp.org
+      - 3.dk.pool.ntp.org
+    password: rancher
+    environment:
+      http_proxy: ""
+      https_proxy: ""
+    labels:
+      topology.kubernetes.io/zone: zone1
+      foo: bar
+      mylabel: myvalue
+  install:
+    management_interface:
+      method: dhcp
+    force_efi: true
+    device: /dev/vda
+    silent: true
+    poweroff: true
+    no_format: true
+    debug: true
+    tty: ttyS0
+    vip: 10.10.0.19
+    vip_hw_addr: 52:54:00:ec:0e:0b
+    vip_mode: dhcp
+    force_mbr: false
+  system_settings:
+    auto_disk_provision_paths: ""

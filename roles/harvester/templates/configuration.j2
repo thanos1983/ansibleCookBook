@@ -3,54 +3,49 @@ server_url: https://{{ configuration.cluster_VIP }}:443
 token: {{ configuration.token }}
 os:
   ssh_authorized_keys:
-  {% for item in configuration.ssh_authorized_keys %}
+{% for item in configuration.os.ssh_authorized_keys %}
     - sh-rsa {{ item }}
-  {% endfor %}
-  write_files:
-  - encoding: ""
-    content: test content
-    owner: root
-    path: /etc/test.txt
-    permissions: '0755'
-  hostname: myhost
+{% endfor %}
+  hostname: {{ item.key }}
   modules:
-    - kvm
-    - nvme
-  sysctls:
-    kernel.printk: "4 4 1 7"
-    kernel.kptr_restrict: "1"
+{% for item in configuration.os.modules %}
+    - {{ item }}
+{% endfor %}
   dns_nameservers:
-    - 8.8.8.8
-    - 1.1.1.1
+{% for item in configuration.os.dns_nameservers %}
+    - {{ item }}
+{% endfor %}
   ntp_servers:
-    - 0.suse.pool.ntp.org
-    - 1.suse.pool.ntp.org
-  password: rancher
+{% for item in configuration.os.ntp_servers %}
+    - {{ item }}
+{% endfor %}
+  password: {{ configuration.os.password }}
   environment:
-    http_proxy: http://myserver
-    https_proxy: http://myserver
+    http_proxy: "{{ configuration.os.environment.http_proxy }}"
+    https_proxy: "{{ configuration.os.environment.https_proxy }}"
   labels:
-    topology.kubernetes.io/zone: zone1
-    foo: bar
-    mylabel: myvalue
+{% for key,value in configuration.os.labels.items() %}
+    {{ key }}: {{ value }}
+{% endfor %}
 install:
-  mode: create
+  mode: {{ item.value.os.mode }}
   management_interface:
     interfaces:
-    - name: ens5
-      hwAddr: "B8:CA:3A:6A:64:7C"
-    method: dhcp
-  force_efi: true
-  device: /dev/vda
-  silent: true
-  iso_url: http://myserver/test.iso
-  poweroff: true
-  no_format: true
-  debug: true
-  tty: ttyS0
-  vip: 10.10.0.19
-  vip_hw_addr: 52:54:00:ec:0e:0b
-  vip_mode: dhcp
-  force_mbr: false
+{% for key in item.value.install.management_interface.interfaces %}
+    - name: {{ key.name }}
+      hwAddr: {{ key.hwAddr }}
+{% endfor %}
+    method: {{ configuration.install.management_interface.method }}
+  force_efi: {{ configuration.install.force_efi }}
+  device: {{ configuration.install.device }}
+  silent: {{ configuration.install.silent }}
+  poweroff: {{ configuration.install.poweroff }}
+  no_format: {{ configuration.install.no_format }}
+  debug: {{ configuration.install.debug }}
+  tty: {{ configuration.install.tty }}
+  vip: {{ configuration.install.vip }}
+  vip_hw_addr: {{ configuration.install.vip_hw_addr }}
+  vip_mode: {{ configuration.install.vip_mode }}
+  force_mbr: {{ configuration.install.force_mbr }}
 system_settings:
-  auto-disk-provision-paths: ""
+  auto-disk-provision-paths: "{{ configuration.system_settings.auto_disk_provision_paths }}"

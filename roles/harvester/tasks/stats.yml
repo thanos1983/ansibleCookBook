@@ -1,0 +1,25 @@
+---
+# tasks file for roles/harvester stats
+- name: Get stats of Harvester iso image
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/{{ harvester.iso_image }}"
+    get_attributes: false
+    get_mime: false
+  register: stat_iso
+
+- name: Get stats of new Harvester ISO image(s)
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/{{ item.key }}.iso"
+    get_attributes: false
+    get_mime: false
+  register: stat_iso_new
+  loop: "{{ lookup('ansible.builtin.dict', configuration.nodes) }}"
+
+- name: Print stats of Harvester ISO image
+  ansible.builtin.debug:
+    msg: "ISO: {{ stat_iso.stat.path }} size: {{ stat_iso.stat.size }}"
+
+- name: Print stats of new Harvester ISO image(s)
+  ansible.builtin.debug:
+    msg: "ISO: {{ item.stat.path }} size: {{ item.stat.size }}"
+  with_items: "{{ stat_iso_new.results }}"

@@ -1,0 +1,6 @@
+---
+# tasks file for roles/harvester iso_delete
+- name: "Remove ISO file {{ harvester.iso_image }}"
+  ansible.builtin.file:
+    path: "{{ role_path }}/files/{{ harvester.iso_image }}"
+    state: absent

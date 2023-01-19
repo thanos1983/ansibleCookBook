@@ -1,0 +1,28 @@
+---
+# tasks file for roles/harvester iso_create
+- name: Check if the ISO Harvester file exists
+  ansible.builtin.stat:
+    path: "{{ role_path }}/files/{{ harvester.iso_image }}"
+  register: st
+
+- name: Inform user that the file does not exist
+  ansible.builtin.debug:
+    msg: "ISO image: {{ harvester.iso_image }} does not exist on local dir."
+  when: not st.stat.exists
+
+- name: Download ISO image for Harvester if it does not exist
+  ansible.builtin.get_url:
+    url: "{{ harvester.iso_url }}"
+    dest: "{{ role_path }}/files/{{ harvester.iso_image }}"
+    mode: "0644"
+  when: not st.stat.exists
+
+- name: Create ISO file(s) based on Harvester configuration files
+  community.general.iso_create:
+    src_files:
+      - "{{ role_path }}/files/{{ item.key }}.yaml"
+      - "{{ role_path }}/files/{{ harvester.iso_image }}"
+    dest_iso: "{{ role_path }}/files/{{ item.key }}.iso"
+    vol_ident: "{{ item.key }}_AUTOINSTALL"
+    interchange_level: 3
+  loop: "{{ lookup('ansible.builtin.dict', configuration.hosts) }}"
