@@ -5,11 +5,11 @@
     - name: Prepare Harvester Configuration file(s)
       ansible.builtin.include_tasks: configuration.yml
 
-    - name: Prepare Harvester ISO with Configuration file(s)
-      ansible.builtin.include_tasks: iso_create.yml
+    # - name: Prepare Harvester ISO with Configuration file(s)
+    #  ansible.builtin.include_tasks: iso_create.yml
 
-    - name: Get ISO file(s) Stats
-      ansible.builtin.include_tasks: stats.yml
+    # - name: Get ISO file(s) Stats
+    #  ansible.builtin.include_tasks: stats.yml
   always:
     - name: Remove ISO file
       ansible.builtin.include_tasks: iso_delete.yml
