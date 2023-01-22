@@ -130,3 +130,6 @@ dmypy.json
 
 # DS_Store ignore
 .DS_Store
+
+# Ignore ISO files
+**/*.iso
